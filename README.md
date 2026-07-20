@@ -39,7 +39,9 @@ The primary routes are:
 The D1 schema lives in `db/schema.ts`; checked-in migrations live in `drizzle/`. The application
 initializes missing tables defensively and seeds the supplied Din Tai Fung configuration. A public
 page visit reuses the latest stored reading. Open the official waitlist from the dashboard, enter
-the wait shown there, and RestoWaitlist timestamps and saves it.
+the wait shown there, and RestoWaitlist timestamps and saves it. The same form can backfill past
+readings by supplying the original date/time and any party size from 1 to 20; leaving the date blank
+records the reading at the current time.
 
 ### Live source status
 

@@ -17,14 +17,24 @@ const statusCopy: Record<Observation["status"], string> = {
   manual: "Manual reading",
 };
 
-function formatTime(value: string): string {
+function formatTime(value: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "America/New_York",
+    timeZone,
   }).format(new Date(value));
+}
+
+function waitlistUrlForParty(sourceUrl: string, partySize: number): string {
+  try {
+    const url = new URL(sourceUrl);
+    url.searchParams.set("party_size", String(partySize));
+    return url.toString();
+  } catch {
+    return sourceUrl;
+  }
 }
 
 function currentWait(observation: Observation | undefined): string {
@@ -40,7 +50,13 @@ function currentWait(observation: Observation | undefined): string {
   return `${observation.waitMinMinutes} min`;
 }
 
-function HistoryChart({ observations }: { observations: Observation[] }) {
+function HistoryChart({
+  observations,
+  timeZone,
+}: {
+  observations: Observation[];
+  timeZone: string;
+}) {
   const usable = observations
     .filter((item) => item.waitMidpointMinutes !== null)
     .slice(-24);
@@ -68,18 +84,28 @@ function HistoryChart({ observations }: { observations: Observation[] }) {
         <polyline className="chart-fill" points={`0,100 ${points} 100,100`} />
         <polyline className="chart-line" points={points} />
       </svg>
-      <div className="chart-labels"><span>{formatTime(usable[0].observedAt)}</span><span>{formatTime(usable.at(-1)!.observedAt)}</span></div>
+      <div className="chart-labels"><span>{formatTime(usable[0].observedAt, timeZone)}</span><span>{formatTime(usable.at(-1)!.observedAt, timeZone)}</span></div>
     </div>
   );
 }
 
 export function Dashboard({ data }: { data: RestaurantDashboard }) {
   const [partySize, setPartySize] = useState(data.restaurant.partySizes[0] ?? 4);
+  const [entryPartySize, setEntryPartySize] = useState(String(data.restaurant.partySizes[0] ?? 4));
   const [entryStatus, setEntryStatus] = useState("wait_available");
+  const [entryObservedAt, setEntryObservedAt] = useState("");
   const [waitMin, setWaitMin] = useState("");
   const [waitMax, setWaitMax] = useState("");
   const [saveState, setSaveState] = useState<"idle" | "loading" | "done">("idle");
   const [saveError, setSaveError] = useState("");
+  const availablePartySizes = useMemo(
+    () =>
+      [...new Set([
+        ...data.restaurant.partySizes,
+        ...data.observations.map((observation) => observation.partySize),
+      ])].sort((a, b) => a - b),
+    [data.observations, data.restaurant.partySizes],
+  );
   const observations = useMemo(
     () => data.observations.filter((item) => item.partySize === partySize),
     [data.observations, partySize],
@@ -99,8 +125,11 @@ export function Dashboard({ data }: { data: RestaurantDashboard }) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          partySize,
+          partySize: Number(entryPartySize),
           status: entryStatus,
+          observedAt: entryObservedAt
+            ? new Date(entryObservedAt).toISOString()
+            : undefined,
           waitMinMinutes: waitMin,
           waitMaxMinutes: waitMax,
         }),
@@ -134,22 +163,25 @@ export function Dashboard({ data }: { data: RestaurantDashboard }) {
           <p className="lede">Check the official waitlist, save what you see, and turn each reading into a calmer dinner plan.</p>
           <div className="party-picker" aria-label="Party size">
             <span>Party size</span>
-            {data.restaurant.partySizes.map((size) => (
-              <button className={size === partySize ? "active" : ""} key={size} onClick={() => setPartySize(size)}>{size}</button>
+            {availablePartySizes.map((size) => (
+              <button className={size === partySize ? "active" : ""} key={size} onClick={() => {
+                setPartySize(size);
+                setEntryPartySize(String(size));
+              }}>{size}</button>
             ))}
           </div>
         </div>
 
         <article className="wait-card" aria-label="Current wait status">
           <div className="card-topline">
-            <span>CURRENT WAIT</span>
+            <span>LATEST READING</span>
             <span className={`status-pill status-${latest?.status ?? "unknown"}`}>
               {latest ? statusCopy[latest.status] : "Awaiting first reading"}
             </span>
           </div>
           <div className="wait-value">{currentWait(latest)}</div>
           <p className="wait-label">
-            {latest ? `Recorded ${formatTime(latest.observedAt)}` : "No manual reading has been recorded yet."}
+            {latest ? `Recorded ${formatTime(latest.observedAt, data.restaurant.timezone)}` : "No manual reading has been recorded yet."}
           </p>
           {latest?.errorMessage ? <p className="source-note">{latest.errorMessage}</p> : null}
           <div className="card-rule" />
@@ -158,12 +190,23 @@ export function Dashboard({ data }: { data: RestaurantDashboard }) {
             <div><p className="micro-label">PARTY</p><p>{partySize} guests</p></div>
           </div>
           <div className="card-actions">
-            <a className="primary-button" href={data.restaurant.waitSourceUrl} rel="noreferrer" target="_blank">1. Open official waitlist <span aria-hidden="true">↗</span></a>
+            <a className="primary-button" href={waitlistUrlForParty(data.restaurant.waitSourceUrl, Number(entryPartySize) || partySize)} rel="noreferrer" target="_blank">1. Open official waitlist <span aria-hidden="true">↗</span></a>
             <form className="manual-entry" onSubmit={saveManualReading}>
               <div className="manual-heading">
-                <div><span>2.</span><strong>Record what you see</strong></div>
-                <small>Saved with the current time</small>
+                <div><span>2.</span><strong>Add a current or past reading</strong></div>
+                <small>Past data is welcome</small>
               </div>
+              <div className="entry-meta-fields">
+                <label>
+                  <span>People</span>
+                  <input aria-label="Number of people" inputMode="numeric" max="20" min="1" onChange={(event) => setEntryPartySize(event.target.value)} required type="number" value={entryPartySize} />
+                </label>
+                <label>
+                  <span>Observed at (optional)</span>
+                  <input aria-label="Past observation date and time" onChange={(event) => setEntryObservedAt(event.target.value)} type="datetime-local" value={entryObservedAt} />
+                </label>
+              </div>
+              <p className="entry-help">Leave the date blank to save it as now. Times use your device timezone; the dashboard displays {data.restaurant.timezone}.</p>
               <label className="status-field">
                 <span>Status</span>
                 <select value={entryStatus} onChange={(event) => setEntryStatus(event.target.value)}>
@@ -199,7 +242,7 @@ export function Dashboard({ data }: { data: RestaurantDashboard }) {
           <div><p className="eyebrow">RECENT SIGNAL</p><h2>Wait history</h2></div>
           <p>Party of {partySize} · last 24 usable readings</p>
         </div>
-        <HistoryChart observations={observations} />
+        <HistoryChart observations={observations} timeZone={data.restaurant.timezone} />
         <div className="insight-grid">
           <article><p className="micro-label">MEDIAN WAIT</p><strong>{recommendation.p50Minutes === null ? "—" : `${recommendation.p50Minutes} min`}</strong></article>
           <article><p className="micro-label">SAFER BUFFER</p><strong>{recommendation.p80Minutes === null ? "—" : `${recommendation.p80Minutes} min`}</strong></article>

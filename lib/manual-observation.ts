@@ -4,6 +4,7 @@ import type { ObservationInput } from "@/db/storage";
 export type ManualObservationPayload = {
   partySize?: unknown;
   status?: unknown;
+  observedAt?: unknown;
   waitMinMinutes?: unknown;
   waitMaxMinutes?: unknown;
 };
@@ -22,18 +23,27 @@ function optionalInteger(value: unknown): number | null {
 export function buildManualObservation(
   restaurant: Restaurant,
   payload: ManualObservationPayload,
-  observedAt = new Date().toISOString(),
+  defaultObservedAt = new Date().toISOString(),
 ): ObservationInput {
   const partySize = optionalInteger(payload.partySize);
-  if (partySize === null || !restaurant.partySizes.includes(partySize)) {
-    throw new Error("Choose a supported party size");
+  if (partySize === null || partySize < 1 || partySize > 20) {
+    throw new Error("Party size must be between 1 and 20 people");
+  }
+
+  const observedAt = String(payload.observedAt ?? defaultObservedAt);
+  const observedDate = new Date(observedAt);
+  if (Number.isNaN(observedDate.getTime())) {
+    throw new Error("Choose a valid observation date and time");
+  }
+  if (observedDate.getTime() > Date.now() + 5 * 60_000) {
+    throw new Error("Observation time cannot be in the future");
   }
 
   const requestedStatus = String(payload.status ?? "wait_available") as ObservationStatus;
   if (requestedStatus === "no_wait") {
     return {
       partySize,
-      observedAt,
+      observedAt: observedDate.toISOString(),
       status: "no_wait",
       waitMinMinutes: 0,
       waitMaxMinutes: 0,
@@ -53,7 +63,7 @@ export function buildManualObservation(
       requestedStatus === "restaurant_closed" ? "Restaurant closed" : "Waitlist closed";
     return {
       partySize,
-      observedAt,
+      observedAt: observedDate.toISOString(),
       status: requestedStatus,
       waitMinMinutes: null,
       waitMaxMinutes: null,
@@ -92,7 +102,7 @@ export function buildManualObservation(
 
   return {
     partySize,
-    observedAt,
+    observedAt: observedDate.toISOString(),
     status: "manual",
     waitMinMinutes,
     waitMaxMinutes,

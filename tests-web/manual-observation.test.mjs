@@ -52,3 +52,33 @@ test("rejects an inverted wait range", () => {
     /Maximum wait/,
   );
 });
+
+test("keeps a supplied historical observation time and party size", () => {
+  const observation = buildManualObservation(restaurant, {
+    partySize: 7,
+    status: "wait_available",
+    observedAt: "2026-07-18T23:30:00.000Z",
+    waitMinMinutes: 30,
+  });
+  assert.equal(observation.partySize, 7);
+  assert.equal(observation.observedAt, "2026-07-18T23:30:00.000Z");
+});
+
+test("rejects unsupported party sizes", () => {
+  assert.throws(
+    () => buildManualObservation(restaurant, { partySize: 21, status: "no_wait" }),
+    /between 1 and 20/,
+  );
+});
+
+test("rejects future observation times", () => {
+  assert.throws(
+    () =>
+      buildManualObservation(restaurant, {
+        partySize: 4,
+        status: "no_wait",
+        observedAt: "2999-01-01T00:00:00.000Z",
+      }),
+    /cannot be in the future/,
+  );
+});
