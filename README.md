@@ -12,7 +12,8 @@ Automated Din Tai Fung wait readings are published on this repo's [`gh-pages`](h
 | | |
 |---|---|
 | **Live dashboard** | https://jdelpego.github.io/restowaitlist/ |
-| **Raw wait archive** | [`data/waits.json`](https://github.com/mirabellebrown/restowaitlist/blob/gh-pages/data/waits.json) |
+| **Raw wait archive (main)** | [`published/waits.json`](https://github.com/mirabellebrown/restowaitlist/blob/main/published/waits.json) |
+| **Raw wait archive (gh-pages)** | [`data/waits.json`](https://github.com/mirabellebrown/restowaitlist/blob/gh-pages/data/waits.json) |
 | **Site source** | [`gh-pages` branch](https://github.com/mirabellebrown/restowaitlist/tree/gh-pages) |
 
 The archive on `gh-pages` is the source of truth in this repository. The public dashboard URL above
