@@ -53,7 +53,7 @@ The supplied Din Tai Fung Yelp waitlist URL declines automated access. The web a
 runs in manual mode and makes no background request to Yelp. Automated collection remains disabled
 unless an authorized data source is arranged later.
 
-The four confirmed Din Tai Fung readings from July 20, 2026 are seeded idempotently. They remain
+The twelve confirmed Din Tai Fung readings from July 20, 2026 are seeded idempotently. They remain
 available after a clean local rebuild and initialize a fresh deployment without creating duplicates.
 
 ### Deploy on Cloudflare Free
