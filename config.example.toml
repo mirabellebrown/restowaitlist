@@ -1,0 +1,50 @@
+# Din Tai Fung New York party-of-four example supplied by the user.
+# The architecture is restaurant/provider agnostic: replace [location] values for another venue.
+# IMPORTANT: an acknowledgment records your review; it does not create permission.
+
+[location]
+name = "Din Tai Fung New York"
+address = ""
+timezone = "America/New_York"
+official_url = "https://www.yelp.com/biz/din-tai-fung-new-york-3?osq=Restaurants"
+wait_source_url = "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4&utm_medium=waitlist_widget&utm_source=biz_details"
+provider = "yelp-waitlist"
+
+[source]
+# Try one ordinary HTTP response first. If the authorized visible value is rendered only by
+# JavaScript, install the browser extra and change this to "playwright".
+type = "http"
+permission_acknowledged = false
+permission_reviewed_at = ""
+# This must select only the current displayed wait estimate. Source markup changes over time;
+# `doctor` prints exactly what this selector produces. Update it after an authorized inspection.
+selector = "[data-wait-estimate], .wait-estimate, .wait-time"
+attribute = ""
+manual_csv_path = "./data/manual-waits.csv"
+timeout_seconds = 20.0
+transient_retry_delay_seconds = 1.0
+user_agent = "dtf-waitwatch/0.1 (permission-aware personal monitoring)"
+
+[collection]
+# The waitlist URL contains party_size=4. Automated profiles intentionally allow one party size
+# so a location receives no more than one page load per interval.
+party_sizes = [4]
+duration_days = 5.0
+interval_minutes = 15
+
+[recommendation]
+default_risk_percentile = 0.80
+
+[database]
+path = "./data/waits.sqlite3"
+
+# Optional. If omitted, collection is attempted at every interval. Add only verified hours.
+# Multiple periods per day are supported, as are overnight ranges such as "17:00-01:00".
+[opening_hours]
+# monday = ["11:00-22:00"]
+# tuesday = ["11:00-22:00"]
+# wednesday = ["11:00-22:00"]
+# thursday = ["11:00-22:00"]
+# friday = ["11:00-23:00"]
+# saturday = ["11:00-23:00"]
+# sunday = ["11:00-22:00"]

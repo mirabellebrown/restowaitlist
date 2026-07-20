@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+pytest-cache-files-*/
+.test-tmp/
+.ruff_cache/
+.venv/
+.venv312/
+venv/
+config.toml
+data/
+reports/
+playwright-report/
+.env

@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dtf-waitwatch"
+version = "0.1.0"
+description = "Permission-aware restaurant wait estimate collection and recommendations"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "dtf-waitwatch contributors" }]
+dependencies = [
+  "beautifulsoup4==4.13.4",
+  "httpx==0.28.1",
+  "pandas==3.0.1",
+  "plotly==6.2.0",
+  "typer==0.16.0",
+]
+
+[project.optional-dependencies]
+browser = ["playwright==1.54.0"]
+dev = [
+  "pytest==8.4.1",
+  "ruff==0.12.4",
+]
+
+[project.scripts]
+dtf-waitwatch = "dtf_waitwatch.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dtf_waitwatch"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = [
+  ".git",
+  ".pytest_cache",
+  ".ruff_cache",
+  ".test-tmp",
+  ".venv",
+  ".venv312",
+  "pytest-cache-files-*",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

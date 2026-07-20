@@ -1,0 +1,23 @@
+services:
+  waitwatch:
+    build:
+      context: .
+      target: runtime
+    restart: on-failure:5
+    command: ["run", "--config", "/app/config.toml"]
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+      - ./data:/app/data
+      - ./reports:/app/reports
+
+  waitwatch-browser:
+    profiles: ["browser"]
+    build:
+      context: .
+      target: browser
+    restart: on-failure:5
+    command: ["run", "--config", "/app/config.toml"]
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+      - ./data:/app/data
+      - ./reports:/app/reports
