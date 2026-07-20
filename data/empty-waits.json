@@ -6,6 +6,11 @@
     "timezone": "America/New_York",
     "official_url": "https://www.yelp.com/biz/din-tai-fung-new-york-3?osq=Restaurants"
   },
-  "party_sizes": [2, 3, 4, 5, 6],
+  "party_sizes": [
+    2,
+    3,
+    4,
+    5
+  ],
   "rows": []
 }

@@ -3,37 +3,125 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Din Tai Fung New York published wait estimates." />
-    <title>Din Tai Fung wait table</title>
+    <meta
+      name="description"
+      content="RestoWaitlist — Din Tai Fung New York wait timing dashboard."
+    />
+    <title>RestoWaitlist · Din Tai Fung New York</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="app.js" defer></script>
   </head>
   <body>
-    <main>
-      <header>
-        <p class="eyebrow">Wait estimates</p>
-        <h1 id="restaurant-name">Din Tai Fung New York</h1>
-        <p id="metadata" class="metadata">Loading published observations…</p>
-      </header>
+    <main class="site-shell">
+      <nav class="nav-wrap" aria-label="Primary navigation">
+        <a class="wordmark" href="./">RESTO<span>WAIT</span>LIST</a>
+        <div class="nav-links">
+          <a href="#history">History</a>
+          <span class="live-dot" id="live-dot" aria-hidden="true"></span>
+          NYC
+        </div>
+      </nav>
 
-      <section aria-labelledby="wait-table-heading">
-        <div class="section-heading">
-          <h2 id="wait-table-heading">15-minute readings</h2>
-          <p id="row-count"></p>
+      <section class="hero dashboard-hero">
+        <div class="hero-copy">
+          <p class="eyebrow" id="hero-eyebrow">NEW YORK · PARTY OF 4</p>
+          <h1>Time the table.<br />Skip the guesswork.</h1>
+          <p class="lede">
+            Check the official waitlist, save what you see, and turn each reading
+            into a calmer dinner plan.
+          </p>
+          <div class="party-picker" id="party-picker" aria-label="Party size">
+            <span>Party size</span>
+          </div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead id="table-head"></thead>
-            <tbody id="table-body"></tbody>
-          </table>
-        </div>
-        <p id="empty-state" class="empty-state" hidden>No published observations yet.</p>
+
+        <article class="wait-card" aria-label="Current wait status">
+          <div class="card-topline">
+            <span>LATEST READING</span>
+            <span class="status-pill" id="status-pill">Loading…</span>
+          </div>
+          <div class="wait-value" id="wait-value">—</div>
+          <p class="wait-label" id="wait-label">Loading published readings…</p>
+          <p class="source-note" id="source-note" hidden></p>
+          <div class="card-rule"></div>
+          <div class="restaurant-row">
+            <div>
+              <p class="micro-label">RESTAURANT</p>
+              <p id="restaurant-name">Din Tai Fung New York</p>
+            </div>
+            <div>
+              <p class="micro-label">PARTY</p>
+              <p id="party-label">4 guests</p>
+            </div>
+          </div>
+          <div class="card-actions">
+            <a
+              class="primary-button"
+              id="waitlist-link"
+              href="https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4"
+              rel="noreferrer"
+              target="_blank"
+            >
+              Open official waitlist <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </article>
       </section>
 
-      <p class="disclaimer">
-        Estimates are manually supplied or come from a separately authorized source. They are not
-        booking availability and may change before you arrive.
-      </p>
+      <section class="signal-strip" aria-label="Service status">
+        <div>
+          <span>01</span>
+          <strong>Official handoff</strong>
+          <small>Never joins automatically</small>
+        </div>
+        <div>
+          <span>02</span>
+          <strong>Published archive</strong>
+          <small>Readings stored on GitHub</small>
+        </div>
+        <div>
+          <span>03</span>
+          <strong id="confidence-label">building confidence</strong>
+          <small id="sample-label">0 usable readings</small>
+        </div>
+      </section>
+
+      <section class="insights" id="history">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">RECENT SIGNAL</p>
+            <h2>Wait history</h2>
+          </div>
+          <p id="history-caption">Party of 4 · last 24 usable readings</p>
+        </div>
+        <div class="history-chart" id="history-chart"></div>
+        <div class="insight-grid">
+          <article>
+            <p class="micro-label">MEDIAN WAIT</p>
+            <strong id="p50">—</strong>
+          </article>
+          <article>
+            <p class="micro-label">SAFER BUFFER</p>
+            <strong id="p80">—</strong>
+          </article>
+          <article class="recommendation-card">
+            <p class="micro-label">RECOMMENDATION</p>
+            <p id="recommendation">Loading…</p>
+          </article>
+        </div>
+      </section>
+
+      <footer>
+        <strong>RESTO<span>WAIT</span>LIST</strong>
+        <p>Independent timing tool. Not affiliated with Yelp or Din Tai Fung.</p>
+        <a
+          id="official-link"
+          href="https://www.yelp.com/biz/din-tai-fung-new-york-3"
+          target="_blank"
+          rel="noreferrer"
+          >Restaurant details ↗</a
+        >
+      </footer>
     </main>
   </body>
 </html>

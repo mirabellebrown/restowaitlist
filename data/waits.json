@@ -4,7 +4,8 @@
   "restaurant": {
     "name": "Din Tai Fung New York",
     "timezone": "America/New_York",
-    "official_url": "https://www.yelp.com/biz/din-tai-fung-new-york-3?osq=Restaurants"
+    "official_url": "https://www.yelp.com/biz/din-tai-fung-new-york-3?osq=Restaurants",
+    "wait_source_url": "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4"
   },
   "party_sizes": [
     2,
