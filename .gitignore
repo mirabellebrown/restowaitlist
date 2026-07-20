@@ -13,7 +13,9 @@ data/
 reports/
 playwright-report/
 .env
+.dev.vars*
 node_modules/
+.pnpm-store/
 .next/
 dist/
 .wrangler/

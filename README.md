@@ -48,6 +48,26 @@ RestoWaitlist records this as `source_blocked`, displays the condition, and does
 the response. The website and manual/import workflows remain usable while an authorized live data
 source is arranged.
 
+### Deploy on Cloudflare Free
+
+The checked-in `wrangler.jsonc` deploys one Worker, automatically provisions the `DB` D1 binding,
+and registers `*/15 * * * *` as the Cron Trigger. From the repository root:
+
+```bash
+npm ci
+npx wrangler login
+npm run deploy
+```
+
+Complete Cloudflare's browser authorization when `wrangler login` opens it. The deploy command
+prints the public `workers.dev` URL. Verify the deployment at `/api/health`, then confirm the cron
+under **Workers & Pages > restowaitlist > Settings > Triggers**. The application creates its tables
+and Din Tai Fung record on first access, so no separate first-deploy migration command is required.
+
+The direct Cloudflare deployment does not provide OpenAI Sites' `/manage` authentication routes.
+The dashboard and Cron Trigger work independently; configure a Cloudflare-native admin login before
+exposing management functions there.
+
 ## Python collection toolkit
 
 `dtf-waitwatch` records a restaurant's publicly displayed wait estimate on a fixed schedule,

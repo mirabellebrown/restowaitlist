@@ -1,6 +1,8 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { listRestaurants } from "@/db/storage";
+import { refreshRestaurant } from "@/lib/collector";
 
 interface Env {
   ASSETS: Fetcher;
@@ -17,6 +19,29 @@ interface Env {
 interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
+}
+
+async function collectActiveRestaurants(): Promise<void> {
+  const restaurants = (await listRestaurants()).filter(
+    (restaurant) => restaurant.active,
+  );
+  const results = await Promise.allSettled(
+    restaurants.map((restaurant) => refreshRestaurant(restaurant.slug)),
+  );
+
+  results.forEach((result, index) => {
+    const restaurant = restaurants[index];
+    if (result.status === "fulfilled") {
+      console.log(
+        `Scheduled collection completed for ${restaurant.slug}: ${result.value.observation.status}`,
+      );
+    } else {
+      console.error(
+        `Scheduled collection failed for ${restaurant.slug}:`,
+        result.reason,
+      );
+    }
+  });
 }
 
 // Image security config. SVG sources with .svg extension auto-skip the
@@ -41,6 +66,13 @@ const worker = {
     }
 
     return handler.fetch(request, env, ctx);
+  },
+
+  async scheduled(): Promise<void> {
+    console.log("Scheduled collection started");
+    await collectActiveRestaurants().catch((error) => {
+      console.error("Scheduled collection could not start:", error);
+    });
   },
 };
 
