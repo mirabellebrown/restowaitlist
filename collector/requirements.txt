@@ -1,0 +1,2 @@
+patchright>=1.52
+beautifulsoup4>=4.12

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS LaunchAgent that runs the collector on the :00/:15/:30/:45 grid.
+  Install:
+    cp collector/com.restowaitlist.collector.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.restowaitlist.collector.plist
+  Update the two absolute paths below if the repo lives elsewhere.
+  Runs as a LaunchAgent (in your GUI session) so headful Chrome can open.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.restowaitlist.collector</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/jdelpego/restowaitlist/collector/run.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Minute</key><integer>15</integer></dict>
+    <dict><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Minute</key><integer>45</integer></dict>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/jdelpego/.restowaitlist/collector.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/jdelpego/.restowaitlist/collector.err.log</string>
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

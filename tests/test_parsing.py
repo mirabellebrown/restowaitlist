@@ -37,6 +37,26 @@ def test_all_documented_wait_formats(text, status, low, high, midpoint, open_end
 
 
 @pytest.mark.parametrize(
+    ("text", "low", "high", "midpoint"),
+    [
+        # Yelp renders long waits in hours and appends a stray " mins" in its
+        # widget template, e.g. the literal live value "3–4 hours mins".
+        ("3–4 hours mins", 180, 240, 210),
+        ("3-4 hours", 180, 240, 210),
+        ("1-2 hours", 60, 120, 90),
+        ("2 hours", 120, 120, 120),
+        ("about 1 hour", 60, 60, 60),
+    ],
+)
+def test_hour_wait_formats(text, low, high, midpoint):
+    parsed = parse_wait_text(text)
+    assert parsed.status is ObservationStatus.WAIT_AVAILABLE
+    assert parsed.wait_min_minutes == low
+    assert parsed.wait_max_minutes == high
+    assert parsed.wait_midpoint_minutes == midpoint
+
+
+@pytest.mark.parametrize(
     ("fixture", "status"),
     [
         ("wait_range.html", ObservationStatus.WAIT_AVAILABLE),
