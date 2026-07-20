@@ -9,7 +9,7 @@ import type {
 
 const DTF_SLUG = "din-tai-fung-new-york-3";
 const DTF_WAIT_URL =
-  "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4&utm_medium=waitlist_widget&utm_source=biz_details";
+  "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4";
 
 type RestaurantRow = {
   id: number;

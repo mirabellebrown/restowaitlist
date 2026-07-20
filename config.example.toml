@@ -7,7 +7,7 @@ name = "Din Tai Fung New York"
 address = ""
 timezone = "America/New_York"
 official_url = "https://www.yelp.com/biz/din-tai-fung-new-york-3?osq=Restaurants"
-wait_source_url = "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4&utm_medium=waitlist_widget&utm_source=biz_details"
+wait_source_url = "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4"
 provider = "yelp-waitlist"
 
 [source]

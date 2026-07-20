@@ -14,7 +14,7 @@ export const dinTaiFungSeed: RestaurantDashboard = {
     officialUrl:
       "https://www.yelp.com/biz/din-tai-fung-new-york-3?osq=Restaurants",
     waitSourceUrl:
-      "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4&utm_medium=waitlist_widget&utm_source=biz_details",
+      "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4",
     provider: "Yelp Waitlist",
     partySizes: [4],
     intervalMinutes: 15,
@@ -35,7 +35,7 @@ export const dinTaiFungSeed: RestaurantDashboard = {
       waitMidpointMinutes: null,
       rawWaitText: "",
       sourceUrl:
-        "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4&utm_medium=waitlist_widget&utm_source=biz_details",
+        "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4",
       sourceProvider: "Yelp Waitlist",
       responseStatusCode: 403,
       responseDurationMs: null,

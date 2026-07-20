@@ -107,7 +107,7 @@ automation, select `manual` and keep the fully functional CSV workflow.
 The Din Tai Fung example uses:
 
 ```text
-https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4&utm_medium=waitlist_widget&utm_source=biz_details
+https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4
 ```
 
 The analogous user-supplied La Parisienne example demonstrates restaurant portability:
