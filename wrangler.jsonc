@@ -8,6 +8,7 @@
     {
       "binding": "DB",
       "database_name": "restowaitlist",
+      "database_id": "eee93bcf-380d-4668-8ab9-4176a13d53e5",
       "migrations_dir": "drizzle"
     }
   ],
