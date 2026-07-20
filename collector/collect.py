@@ -2,9 +2,11 @@
 """Local Din Tai Fung Yelp-waitlist collector for RestoWaitlist.
 
 Runs a real, headful Chrome via patchright to read the *publicly displayed*
-estimated wait for several party sizes, then POSTs each reading to the
-RestoWaitlist API (`POST /api/collect/<slug>`), which stores it in the same
-Cloudflare D1 database the dashboard renders from.
+estimated wait for several party sizes, then publishes each reading to the
+GitHub Pages archive (`data/waits.json` on the `gh-pages` branch). The hosted
+dashboard (https://jdelpego.github.io/restowaitlist/) renders her chart /
+latest-reading UI from that file. Optionally POSTs the same batch to her
+Cloudflare Worker if `RWL_COLLECTOR_TOKEN` is set.
 
 Design notes
 ------------
@@ -27,6 +29,7 @@ import json
 import os
 import random
 import re
+import subprocess
 import sys
 import time
 import urllib.error
@@ -60,6 +63,17 @@ PROFILE_DIR = _env("RWL_PROFILE_DIR", str(Path.home() / ".restowaitlist" / "chro
 HEADLESS = (_env("RWL_HEADLESS", "false") or "").lower() in ("1", "true", "yes")
 DRY_RUN = (_env("RWL_DRY_RUN", "false") or "").lower() in ("1", "true", "yes")
 NAV_TIMEOUT_MS = int(_env("RWL_NAV_TIMEOUT_MS", "45000") or "45000")
+# Optional datadome cookie exported from your real Chrome session
+# (collector/import_yelp_cookie.py). Seeds the browser so the first load starts
+# from an already-verified session instead of a cold, challengeable one.
+COOKIE_FILE = _env("RWL_COOKIE_FILE", str(Path.home() / ".restowaitlist" / "datadome.json"))
+# Local checkout of the gh-pages branch; when set, each run merges readings into
+# data/waits.json and pushes, updating the GitHub Pages table.
+SITE_DIR = _env("RWL_SITE_DIR", "")
+
+_REAL_STATUSES = {
+    "wait_available", "no_wait", "waitlist_closed", "restaurant_closed", "temporarily_unavailable",
+}
 
 # Markers that only appear on a DataDome interstitial / challenge, never on the
 # real waitlist widget (which always contains "waitstatus").
@@ -133,6 +147,17 @@ def _obs(size, observed_iso, status, wait_min, wait_max, raw_text, code, dur, er
     }
 
 
+def _inject_cookie(ctx) -> None:
+    if not COOKIE_FILE or not Path(COOKIE_FILE).exists():
+        return
+    try:
+        cookie = json.loads(Path(COOKIE_FILE).read_text())
+        ctx.add_cookies([cookie])
+        print(f"[cookie] injected {cookie.get('name')} for {cookie.get('domain')}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[cookie] could not inject: {exc}")
+
+
 def collect() -> list[dict]:
     from patchright.sync_api import sync_playwright
 
@@ -148,6 +173,7 @@ def collect() -> list[dict]:
             args=["--disable-blink-features=AutomationControlled"],
         )
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
+        _inject_cookie(ctx)
         try:
             # Warm up like a person landing on the business page first; this
             # establishes the DataDome session cookie for the waitlist loads.
@@ -227,6 +253,54 @@ def post_results(results: list[dict]) -> bool:
     return False
 
 
+def publish_to_pages(results: list[dict]) -> None:
+    """Merge this cycle's readings into the gh-pages data/waits.json and push."""
+    if not SITE_DIR:
+        return
+    if not any(o["status"] in _REAL_STATUSES for o in results):
+        print("[pages] no usable readings this cycle; not publishing")
+        return
+    site = Path(SITE_DIR)
+    data_path = site / "data" / "waits.json"
+    if not data_path.exists():
+        print(f"[pages] {data_path} not found; skipping")
+        return
+    try:
+        subprocess.run(["git", "-C", str(site), "pull", "--quiet", "--no-rebase"],
+                       check=False, timeout=60)
+        data = json.loads(data_path.read_text())
+        rows = data.get("rows", [])
+        by_slot = {r["scheduled_at_utc"]: r for r in rows}
+        slots = []
+        for obs in results:
+            slot = obs["observedAt"]
+            slots.append(slot)
+            row = by_slot.get(slot)
+            if row is None:
+                row = {"scheduled_at_utc": slot, "waits": {}}
+                by_slot[slot] = row
+                rows.append(row)
+            row.setdefault("waits", {})[str(obs["partySize"])] = {
+                "status": obs["status"],
+                "wait_min_minutes": obs["waitMinMinutes"],
+                "wait_max_minutes": obs["waitMaxMinutes"],
+                "raw_wait_text": obs["rawWaitText"],
+            }
+        rows.sort(key=lambda r: r["scheduled_at_utc"])
+        data["rows"] = rows
+        if slots:
+            data["latest_observation_at_utc"] = max(max(slots), data.get("latest_observation_at_utc") or "")
+        data_path.write_text(json.dumps(data, indent=2))
+        subprocess.run(["git", "-C", str(site), "add", "data/waits.json"], check=True, timeout=30)
+        subprocess.run(["git", "-C", str(site), "commit", "-m", f"Publish waits {slots[0] if slots else ''}"],
+                       check=False, timeout=30)
+        push = subprocess.run(["git", "-C", str(site), "push", "--quiet"], check=False, timeout=90)
+        print(f"[pages] published {len(results)} readings"
+              + (" (push failed)" if push.returncode else ""))
+    except Exception as exc:  # noqa: BLE001
+        print(f"[pages] publish failed: {exc}")
+
+
 def main() -> int:
     if not PARTY_SIZES:
         print("No party sizes configured (RWL_PARTY_SIZES).")
@@ -235,12 +309,14 @@ def main() -> int:
     print("=== results ===")
     print(json.dumps(results, indent=1))
     if DRY_RUN:
-        print("[dry-run] not posting to API")
+        print("[dry-run] not publishing")
         return 0
-    if not TOKEN:
-        print("[api] RWL_COLLECTOR_TOKEN is not set; skipping POST.")
-        return 0
-    return 0 if post_results(results) else 1
+    publish_to_pages(results)
+    if TOKEN and API_BASE:
+        post_results(results)
+    elif not TOKEN:
+        print("[api] RWL_COLLECTOR_TOKEN not set; skipping Cloudflare POST.")
+    return 0
 
 
 if __name__ == "__main__":
