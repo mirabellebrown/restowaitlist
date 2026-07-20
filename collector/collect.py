@@ -71,6 +71,9 @@ COOKIE_FILE = _env("RWL_COOKIE_FILE", str(Path.home() / ".restowaitlist" / "data
 # Local checkout of the gh-pages branch; when set, each run merges readings into
 # data/waits.json and pushes, updating the GitHub Pages table.
 SITE_DIR = _env("RWL_SITE_DIR", "")
+# Local checkout of her `main` branch; when set, each run also mirrors the
+# archive to published/waits.json so it stays browsable on the default branch.
+MAIN_DIR = _env("RWL_MAIN_DIR", "")
 # Active window in America/New_York (ET): skip midnight–11am by default.
 ACTIVE_TZ = _env("RWL_ACTIVE_TZ", "America/New_York") or "America/New_York"
 ACTIVE_START_HOUR = int(_env("RWL_ACTIVE_START_HOUR", "11") or "11")  # inclusive
@@ -339,8 +342,44 @@ def publish_to_pages(results: list[dict]) -> None:
             f"[pages] published {len(results)} readings"
             + (f" (failed: {', '.join(failed)})" if failed else "")
         )
+        _mirror_published_to_main(data_path.read_text())
     except Exception as exc:  # noqa: BLE001
         print(f"[pages] publish failed: {exc}")
+
+
+def _mirror_published_to_main(waits_json: str) -> None:
+    """Copy the archive onto main → published/waits.json for easy repo browsing."""
+    if not MAIN_DIR:
+        return
+    main = Path(MAIN_DIR)
+    target = main / "published" / "waits.json"
+    if not target.parent.is_dir():
+        print(f"[main] {target.parent} missing; skip published/ mirror")
+        return
+    try:
+        _git(main, "pull", "--quiet", "--ff-only", "origin", "main")
+        if target.exists() and target.read_text() == waits_json:
+            print("[main] published/waits.json already up to date")
+            return
+        target.write_text(waits_json if waits_json.endswith("\n") else waits_json + "\n")
+        _git(main, "add", "published/waits.json", timeout=30)
+        commit = _git(
+            main,
+            "commit",
+            "-m",
+            "Update published wait archive",
+            timeout=30,
+        )
+        if commit.returncode not in (0, 1):
+            print(f"[main] commit failed: {(commit.stderr or commit.stdout).strip()}")
+            return
+        push = _git(main, "push", "--quiet", "origin", "main", timeout=90)
+        if push.returncode:
+            print(f"[main] push failed: {(push.stderr or push.stdout).strip()}")
+        else:
+            print("[main] published/waits.json updated on origin/main")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[main] published/ mirror failed: {exc}")
 
 
 def in_active_window(now: datetime | None = None) -> bool:
