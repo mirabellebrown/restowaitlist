@@ -13,3 +13,8 @@ data/
 reports/
 playwright-report/
 .env
+node_modules/
+.next/
+dist/
+.wrangler/
+*.tsbuildinfo

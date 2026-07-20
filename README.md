@@ -1,4 +1,54 @@
-# dtf-waitwatch
+# RestoWaitlist
+
+RestoWaitlist is a hosted restaurant wait dashboard plus the original `dtf-waitwatch` Python
+collection toolkit. The web application shows the latest status, historical readings, a
+confidence-aware timing recommendation, and an explicit link to the restaurant's official
+waitlist. It never joins a waitlist automatically.
+
+The production-shaped web surface uses React/vinext on a Cloudflare Worker-compatible runtime and
+D1 for durable restaurant configuration and observation history. Its signed-in management page
+supports additional restaurants, party sizes, timezones, source URLs, and conservative collection
+intervals.
+
+## Web application
+
+Node.js 22.13 or newer is required. Install and validate with:
+
+```bash
+npm ci
+npm run typecheck
+npm run lint
+npm run test:web
+npm run build
+```
+
+Local development uses the Worker-aware command:
+
+```bash
+npm run dev
+```
+
+The primary routes are:
+
+- `/` — Din Tai Fung New York dashboard for party size four
+- `/restaurants/{slug}` — reusable restaurant dashboard
+- `/manage` — ChatGPT-sign-in-gated restaurant configuration
+- `/api/health` — database and collector health
+- `/api/collect/{slug}` — authenticated manual or scheduler-triggered collection
+
+The D1 schema lives in `db/schema.ts`; checked-in migrations live in `drizzle/`. The application
+initializes missing tables defensively and seeds the supplied Din Tai Fung configuration. A public
+page visit reuses the latest stored reading. Manual refreshes and a scheduler credential can invoke
+the collector without exposing secrets in the repository.
+
+### Live source status
+
+The first conservative request to the supplied Din Tai Fung Yelp waitlist URL returned HTTP 403.
+RestoWaitlist records this as `source_blocked`, displays the condition, and does not bypass or evade
+the response. The website and manual/import workflows remain usable while an authorized live data
+source is arranged.
+
+## Python collection toolkit
 
 `dtf-waitwatch` records a restaurant's publicly displayed wait estimate on a fixed schedule,
 preserves the parsed evidence, produces a standalone report, and recommends a risk-aware time to
@@ -214,4 +264,8 @@ Tests never contact external sites and use only synthetic HTML/data:
 pytest
 ruff check .
 ruff format --check .
+npm run typecheck
+npm run lint
+npm run test:web
+npm run build
 ```
