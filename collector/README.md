@@ -2,9 +2,9 @@
 
 A small local agent that reads Din Tai Fung's **publicly displayed** Yelp
 waitlist estimate for several party sizes and publishes each reading to
-**GitHub Pages** (`data/waits.json` on the `gh-pages` branch). The hosted
-dashboard at https://jdelpego.github.io/restowaitlist/ renders her existing
-chart / latest-reading UI from that file — no raw data table on the frontend.
+**her repo's `gh-pages` branch** (`mirabellebrown/restowaitlist` →
+`data/waits.json`), and mirrors the same commit to the fork so the public
+dashboard at https://jdelpego.github.io/restowaitlist/ stays live.
 
 Optionally, the same readings can also be POSTed to her Cloudflare Worker
 (`/api/collect/<slug>`) if that is deployed later.
@@ -88,6 +88,8 @@ human-like pauses, and publishes one batch. Readings are bucketed to the
 
 ## Hosted dashboard
 
-- **URL:** https://jdelpego.github.io/restowaitlist/
-- **Data:** `gh-pages` → `data/waits.json` (backend / archive only)
-- **UI:** her chart + latest-reading card + party picker (no raw table)
+- **Live URL:** https://jdelpego.github.io/restowaitlist/
+- **Source of truth:** https://github.com/mirabellebrown/restowaitlist/tree/gh-pages
+- **Data:** `gh-pages` → `data/waits.json` (archive only; no raw table in the UI)
+- **UI:** her chart + latest-reading card + party picker
+- Local checkout (`RWL_SITE_DIR`) should have `origin` → her repo and `mirror` → fork

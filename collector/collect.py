@@ -258,8 +258,23 @@ def post_results(results: list[dict]) -> bool:
     return False
 
 
+def _git(site: Path, *args: str, timeout: int = 60) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", "-C", str(site), *args],
+        check=False,
+        timeout=timeout,
+        capture_output=True,
+        text=True,
+    )
+
+
 def publish_to_pages(results: list[dict]) -> None:
-    """Merge this cycle's readings into the gh-pages data/waits.json and push."""
+    """Merge this cycle's readings into gh-pages data/waits.json and push.
+
+    Source of truth is her repo (`origin` → mirabellebrown/restowaitlist).
+    Also mirrors to `mirror` (jdelpego fork) so the public GitHub Pages URL
+    stays live until Pages is enabled on her repo.
+    """
     if not SITE_DIR:
         return
     if not any(o["status"] in _REAL_STATUSES for o in results):
@@ -271,8 +286,7 @@ def publish_to_pages(results: list[dict]) -> None:
         print(f"[pages] {data_path} not found; skipping")
         return
     try:
-        subprocess.run(["git", "-C", str(site), "pull", "--quiet", "--no-rebase"],
-                       check=False, timeout=60)
+        _git(site, "pull", "--quiet", "--no-rebase", "origin", "gh-pages")
         data = json.loads(data_path.read_text())
         rows = data.get("rows", [])
         by_slot = {r["scheduled_at_utc"]: r for r in rows}
@@ -294,14 +308,37 @@ def publish_to_pages(results: list[dict]) -> None:
         rows.sort(key=lambda r: r["scheduled_at_utc"])
         data["rows"] = rows
         if slots:
-            data["latest_observation_at_utc"] = max(max(slots), data.get("latest_observation_at_utc") or "")
-        data_path.write_text(json.dumps(data, indent=2))
-        subprocess.run(["git", "-C", str(site), "add", "data/waits.json"], check=True, timeout=30)
-        subprocess.run(["git", "-C", str(site), "commit", "-m", f"Publish waits {slots[0] if slots else ''}"],
-                       check=False, timeout=30)
-        push = subprocess.run(["git", "-C", str(site), "push", "--quiet"], check=False, timeout=90)
-        print(f"[pages] published {len(results)} readings"
-              + (" (push failed)" if push.returncode else ""))
+            data["latest_observation_at_utc"] = max(
+                max(slots), data.get("latest_observation_at_utc") or ""
+            )
+        data_path.write_text(json.dumps(data, indent=2) + "\n")
+        _git(site, "add", "data/waits.json", timeout=30)
+        commit = _git(
+            site, "commit", "-m", f"Publish waits {slots[0] if slots else ''}", timeout=30
+        )
+        if commit.returncode not in (0, 1):
+            print(f"[pages] commit failed: {(commit.stderr or commit.stdout).strip()}")
+            return
+        remotes = [
+            line.split()[0]
+            for line in (_git(site, "remote").stdout or "").splitlines()
+            if line.strip()
+        ]
+        # Prefer her repo first, then any mirror (fork Pages).
+        ordered = [r for r in ("origin", "mirror") if r in remotes]
+        ordered.extend(r for r in remotes if r not in ordered)
+        failed = []
+        for remote in ordered:
+            push = _git(site, "push", "--quiet", remote, "gh-pages", timeout=90)
+            if push.returncode:
+                failed.append(remote)
+                print(f"[pages] push to {remote} failed: {(push.stderr or push.stdout).strip()}")
+            else:
+                print(f"[pages] pushed to {remote}")
+        print(
+            f"[pages] published {len(results)} readings"
+            + (f" (failed: {', '.join(failed)})" if failed else "")
+        )
     except Exception as exc:  # noqa: BLE001
         print(f"[pages] publish failed: {exc}")
 

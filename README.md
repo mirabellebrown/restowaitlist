@@ -5,6 +5,21 @@ collection toolkit. The web application links to a restaurant's official waitlis
 record the displayed wait manually, and turns those readings into history and a confidence-aware
 timing recommendation. It does not scrape or join a waitlist automatically.
 
+## Live dashboard (public)
+
+Automated Din Tai Fung wait readings are published on this repo's [`gh-pages`](https://github.com/mirabellebrown/restowaitlist/tree/gh-pages) branch:
+
+| | |
+|---|---|
+| **Live dashboard** | https://jdelpego.github.io/restowaitlist/ |
+| **Raw wait archive** | [`data/waits.json`](https://github.com/mirabellebrown/restowaitlist/blob/gh-pages/data/waits.json) |
+| **Site source** | [`gh-pages` branch](https://github.com/mirabellebrown/restowaitlist/tree/gh-pages) |
+
+The archive on `gh-pages` is the source of truth in this repository. The public dashboard URL above
+mirrors that branch (GitHub Pages). To serve the dashboard under
+`https://mirabellebrown.github.io/restowaitlist/` as well, a repo admin can enable
+**Settings → Pages → Deploy from branch `gh-pages` / root**.
+
 The production-shaped web surface uses React/vinext on a Cloudflare Worker-compatible runtime and
 D1 for durable restaurant configuration and observation history. Its signed-in management page
 supports additional restaurants, party sizes, timezones, source URLs, and conservative collection
