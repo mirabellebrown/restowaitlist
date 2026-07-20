@@ -36,6 +36,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # Reuse the canonical wait parser that ships with the dtf_waitwatch package.
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -70,6 +71,10 @@ COOKIE_FILE = _env("RWL_COOKIE_FILE", str(Path.home() / ".restowaitlist" / "data
 # Local checkout of the gh-pages branch; when set, each run merges readings into
 # data/waits.json and pushes, updating the GitHub Pages table.
 SITE_DIR = _env("RWL_SITE_DIR", "")
+# Active window in America/New_York (ET): skip midnight–11am by default.
+ACTIVE_TZ = _env("RWL_ACTIVE_TZ", "America/New_York") or "America/New_York"
+ACTIVE_START_HOUR = int(_env("RWL_ACTIVE_START_HOUR", "11") or "11")  # inclusive
+ACTIVE_END_HOUR = int(_env("RWL_ACTIVE_END_HOUR", "24") or "24")  # exclusive
 
 _REAL_STATUSES = {
     "wait_available", "no_wait", "waitlist_closed", "restaurant_closed", "temporarily_unavailable",
@@ -301,10 +306,24 @@ def publish_to_pages(results: list[dict]) -> None:
         print(f"[pages] publish failed: {exc}")
 
 
+def in_active_window(now: datetime | None = None) -> bool:
+    """True when local ET time is within [ACTIVE_START_HOUR, ACTIVE_END_HOUR)."""
+    now = now or datetime.now(ZoneInfo(ACTIVE_TZ))
+    return ACTIVE_START_HOUR <= now.hour < ACTIVE_END_HOUR
+
+
 def main() -> int:
     if not PARTY_SIZES:
         print("No party sizes configured (RWL_PARTY_SIZES).")
         return 2
+    now_et = datetime.now(ZoneInfo(ACTIVE_TZ))
+    if not in_active_window(now_et):
+        print(
+            f"[schedule] quiet hours in {ACTIVE_TZ} "
+            f"({ACTIVE_START_HOUR:02d}:00–{ACTIVE_END_HOUR:02d}:00 inactive); "
+            f"now {now_et.strftime('%Y-%m-%d %H:%M %Z')} — skipping"
+        )
+        return 0
     results = collect()
     print("=== results ===")
     print(json.dumps(results, indent=1))
