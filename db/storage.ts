@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { summarizeRecommendation } from "@/lib/recommendation";
+import { confirmedDinTaiFungObservations } from "@/lib/confirmed-observations";
 import type {
   Observation,
   ObservationStatus,
@@ -133,6 +134,43 @@ export async function initializeDatabase(): Promise<void> {
       now,
     )
     .run();
+
+  const restaurant = await database
+    .prepare("SELECT id FROM restaurants WHERE slug = ?")
+    .bind(DTF_SLUG)
+    .first<{ id: number }>();
+  if (restaurant) {
+    await database.batch(
+      confirmedDinTaiFungObservations.map((observation) =>
+        database
+          .prepare(
+            `INSERT OR IGNORE INTO observations (
+              restaurant_id, party_size, observed_at, status, wait_min_minutes,
+              wait_max_minutes, wait_midpoint_minutes, raw_wait_text, source_url,
+              source_provider, response_status_code, response_duration_ms,
+              error_message, synthetic, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .bind(
+            restaurant.id,
+            observation.partySize,
+            observation.observedAt,
+            observation.status,
+            observation.waitMinMinutes,
+            observation.waitMaxMinutes,
+            observation.waitMidpointMinutes,
+            observation.rawWaitText,
+            observation.sourceUrl,
+            observation.sourceProvider,
+            observation.responseStatusCode,
+            observation.responseDurationMs,
+            observation.errorMessage,
+            0,
+            observation.observedAt,
+          ),
+      ),
+    );
+  }
 }
 
 function restaurantFromRow(row: RestaurantRow): Restaurant {

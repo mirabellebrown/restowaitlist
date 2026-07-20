@@ -28,6 +28,10 @@ Local development uses the Worker-aware command:
 npm run dev
 ```
 
+For a production-shaped local preview with durable local D1 data, use `npm run preview`. Its state
+lives under `.wrangler/local-preview`, outside generated build output, so rebuilding does not erase
+manual observations.
+
 The primary routes are:
 
 - `/` — Din Tai Fung New York dashboard for party size four
@@ -48,6 +52,9 @@ records the reading at the current time.
 The supplied Din Tai Fung Yelp waitlist URL declines automated access. The web application therefore
 runs in manual mode and makes no background request to Yelp. Automated collection remains disabled
 unless an authorized data source is arranged later.
+
+The four confirmed Din Tai Fung readings from July 20, 2026 are seeded idempotently. They remain
+available after a clean local rebuild and initialize a fresh deployment without creating duplicates.
 
 ### Deploy on Cloudflare Free
 

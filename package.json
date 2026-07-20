@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vinext dev",
     "build": "vinext build",
-    "preview": "vinext build && vite preview",
+    "preview": "vinext build && wrangler dev --config dist/server/wrangler.json --persist-to .wrangler/local-preview",
     "deploy": "vinext build && wrangler deploy",
     "start": "vinext start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",

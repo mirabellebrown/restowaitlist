@@ -1,4 +1,5 @@
 import { summarizeRecommendation } from "@/lib/recommendation";
+import { confirmedDinTaiFungObservations } from "@/lib/confirmed-observations";
 import type { RestaurantDashboard } from "@/lib/types";
 
 const collectedAt = "2026-07-20T17:00:00.000Z";
@@ -23,6 +24,6 @@ export const dinTaiFungSeed: RestaurantDashboard = {
     createdAt: collectedAt,
     updatedAt: collectedAt,
   },
-  observations: [],
-  recommendation: summarizeRecommendation([]),
+  observations: confirmedDinTaiFungObservations,
+  recommendation: summarizeRecommendation(confirmedDinTaiFungObservations),
 };

@@ -70,12 +70,13 @@ function HistoryChart({
   }
 
   const max = Math.max(...usable.map((item) => item.waitMidpointMinutes ?? 0), 15);
-  const points = usable
-    .map((item, index) => {
+  const plotPoints = usable.map((item, index) => {
       const x = (index / (usable.length - 1)) * 100;
       const y = 92 - ((item.waitMidpointMinutes ?? 0) / max) * 76;
-      return `${x},${y}`;
-    })
+      return { item, x, y };
+    });
+  const points = plotPoints
+    .map(({ x, y }) => `${x},${y}`)
     .join(" ");
 
   return (
@@ -84,6 +85,22 @@ function HistoryChart({
         <polyline className="chart-fill" points={`0,100 ${points} 100,100`} />
         <polyline className="chart-line" points={points} />
       </svg>
+      <div className="chart-points-layer">
+        {plotPoints.map(({ item, x, y }, index) => (
+          <button
+            aria-label={`${currentWait(item)} at ${formatTime(item.observedAt, timeZone)}`}
+            className={`chart-point ${index === 0 ? "point-start" : ""} ${index === plotPoints.length - 1 ? "point-end" : ""}`}
+            key={item.id}
+            style={{ left: `${x}%`, top: `${y}%` }}
+            type="button"
+          >
+            <span className="chart-tooltip">
+              <strong>{currentWait(item)}</strong>
+              <span>{formatTime(item.observedAt, timeZone)}</span>
+            </span>
+          </button>
+        ))}
+      </div>
       <div className="chart-labels"><span>{formatTime(usable[0].observedAt, timeZone)}</span><span>{formatTime(usable.at(-1)!.observedAt, timeZone)}</span></div>
     </div>
   );
