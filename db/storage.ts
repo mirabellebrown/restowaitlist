@@ -127,12 +127,23 @@ export async function initializeDatabase(): Promise<void> {
       "https://www.yelp.com/biz/din-tai-fung-new-york-3?osq=Restaurants",
       DTF_WAIT_URL,
       "Yelp Waitlist",
-      JSON.stringify([4]),
+      JSON.stringify([2, 3, 4, 5]),
       15,
       now,
       now,
       now,
     )
+    .run();
+
+  // Widen the seeded Din Tai Fung party sizes on databases created before
+  // multi-party collection existed. Scoped to the seed default so a manually
+  // customized party-size list is never overwritten.
+  await database
+    .prepare(
+      `UPDATE restaurants SET party_sizes_json = ?, updated_at = ?
+       WHERE slug = ? AND party_sizes_json = ?`,
+    )
+    .bind(JSON.stringify([2, 3, 4, 5]), now, DTF_SLUG, JSON.stringify([4]))
     .run();
 
   const restaurant = await database

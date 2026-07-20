@@ -17,7 +17,7 @@ export const dinTaiFungSeed: RestaurantDashboard = {
     waitSourceUrl:
       "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4",
     provider: "Yelp Waitlist",
-    partySizes: [4],
+    partySizes: [2, 3, 4, 5],
     intervalMinutes: 15,
     active: true,
     permissionReviewedAt: collectedAt,

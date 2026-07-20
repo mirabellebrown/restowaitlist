@@ -22,6 +22,19 @@ SINGLE_RE = re.compile(
     r"(?:min(?:ute)?s?)\b",
     re.IGNORECASE,
 )
+# Yelp displays long waits in hours (e.g. "3-4 hours") and even appends a stray
+# " mins" to the hour value in its widget template, so hours must be recognized
+# before the minute patterns run.
+HOURS_RANGE_RE = re.compile(
+    r"\b(?P<low>\d{1,2})\s*(?:-|–|—)\s*(?P<high>\d{1,2})\s*"
+    r"(?:hour|hr)s?\b",
+    re.IGNORECASE,
+)
+HOURS_SINGLE_RE = re.compile(
+    r"\b(?:about\s+|approximately\s+|approx\.?\s+)?(?P<value>\d{1,2})\s*"
+    r"(?:hour|hr)s?\b",
+    re.IGNORECASE,
+)
 
 
 def sanitize_text(value: str) -> str:
@@ -69,6 +82,38 @@ def parse_wait_text(value: str) -> ParsedWait:
     if re.search(r"\b(waitlist\s+)?(?:temporarily\s+)?unavailable\b", lowered):
         return ParsedWait(
             status=ObservationStatus.TEMPORARILY_UNAVAILABLE,
+            raw_wait_text=raw,
+            content_hash=hashed,
+            parser_name=PARSER_NAME,
+        )
+    match = HOURS_RANGE_RE.search(raw)
+    if match:
+        low, high = int(match.group("low")) * 60, int(match.group("high")) * 60
+        if high < low:
+            return ParsedWait(
+                status=ObservationStatus.PARSE_ERROR,
+                raw_wait_text=raw,
+                content_hash=hashed,
+                parser_name=PARSER_NAME,
+                error_message="Wait range upper bound is below its lower bound.",
+            )
+        return ParsedWait(
+            status=ObservationStatus.WAIT_AVAILABLE,
+            wait_min_minutes=low,
+            wait_max_minutes=high,
+            wait_midpoint_minutes=(low + high) / 2,
+            raw_wait_text=raw,
+            content_hash=hashed,
+            parser_name=PARSER_NAME,
+        )
+    match = HOURS_SINGLE_RE.search(raw)
+    if match:
+        value_minutes = int(match.group("value")) * 60
+        return ParsedWait(
+            status=ObservationStatus.WAIT_AVAILABLE,
+            wait_min_minutes=value_minutes,
+            wait_max_minutes=value_minutes,
+            wait_midpoint_minutes=float(value_minutes),
             raw_wait_text=raw,
             content_hash=hashed,
             parser_name=PARSER_NAME,
