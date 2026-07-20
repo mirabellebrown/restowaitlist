@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "latest_observation_at_utc": null,
+  "latest_observation_at_utc": "2026-07-20T20:53:54.775Z",
   "restaurant": {
     "name": "Din Tai Fung New York",
     "timezone": "America/New_York",
@@ -10,8 +10,141 @@
     2,
     3,
     4,
-    5,
-    6
+    5
   ],
-  "rows": []
+  "rows": [
+    {
+      "scheduled_at_utc": "2026-07-20T19:30:00.000Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 45,
+          "wait_max_minutes": 60,
+          "raw_wait_text": "45\u201360 min"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-20T19:44:00.000Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 50,
+          "wait_max_minutes": 65,
+          "raw_wait_text": "50\u201365 min"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-20T19:58:00.097Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 105,
+          "wait_max_minutes": 120,
+          "raw_wait_text": "105\u2013120 min"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-20T20:02:06.012Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 110,
+          "wait_max_minutes": 125,
+          "raw_wait_text": "110\u2013125 min"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-20T20:08:25.084Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 75,
+          "wait_max_minutes": 95,
+          "raw_wait_text": "75\u201395 min"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-20T20:16:41.564Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 75,
+          "wait_max_minutes": 95,
+          "raw_wait_text": "75\u201395 min"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-20T20:20:03.935Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 80,
+          "wait_max_minutes": 100,
+          "raw_wait_text": "80\u2013100 min"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-20T20:27:44.347Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 95,
+          "wait_max_minutes": 125,
+          "raw_wait_text": "95\u2013125 min"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-20T20:28:00.942Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 100,
+          "wait_max_minutes": 130,
+          "raw_wait_text": "100\u2013130 min"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-20T20:32:30.585Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 95,
+          "wait_max_minutes": 125,
+          "raw_wait_text": "95\u2013125 min"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-20T20:42:18.514Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 105,
+          "wait_max_minutes": 135,
+          "raw_wait_text": "105\u2013135 min"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-20T20:53:54.775Z",
+      "waits": {
+        "4": {
+          "status": "wait_available",
+          "wait_min_minutes": 105,
+          "wait_max_minutes": 135,
+          "raw_wait_text": "105\u2013135 min"
+        }
+      }
+    }
+  ],
+  "source_note": "Party-of-4 readings confirmed on 2026-07-20; automated 2/3/4/5 collection appends going forward."
 }
