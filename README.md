@@ -1,291 +1,139 @@
 # RestoWaitlist
 
-RestoWaitlist is a hosted restaurant wait dashboard plus the original `dtf-waitwatch` Python
-collection toolkit. The web application shows the latest status, historical readings, a
-confidence-aware timing recommendation, and an explicit link to the restaurant's official
-waitlist. It never joins a waitlist automatically.
+RestoWaitlist records a simple 15-minute wait-time table for Din Tai Fung New York (or another
+configured restaurant): one timestamp and one estimate each for parties of 2, 3, 4, 5, and 6.
+The database stays on the local Mac. A small static site publishes the table through GitHub Pages.
 
-The production-shaped web surface uses React/vinext on a Cloudflare Worker-compatible runtime and
-D1 for durable restaurant configuration and observation history. Its signed-in management page
-supports additional restaurants, party sizes, timezones, source URLs, and conservative collection
-intervals.
+## Important source boundary
 
-## Web application
+Yelp returned a protected/blocked response to this project’s earlier HTTP check. This project does
+not bypass DataDome, solve CAPTCHAs, rotate identities, simulate human behavior, log in, or submit
+a waitlist form. It makes no automated Yelp requests in the default configuration.
 
-Node.js 22.13 or newer is required. Install and validate with:
+The supported production path is a **complete manual snapshot** entered by a person, or a separate
+data feed for which the operator has clear permission. A snapshot is validated before it is stored:
+it must contain every configured party size and each value must be a recognizable displayed wait
+estimate (for example, `10-15 mins`, `No wait`, or `Waitlist closed`). Missing values are never
+invented.
 
-```bash
-npm ci
-npm run typecheck
-npm run lint
-npm run test:web
-npm run build
+## What runs where
+
+```text
+person / authorized source
+          │ writes one complete local snapshot
+          ▼
+  this Mac: SQLite + 15-minute launchd task
+          │ exports static JSON
+          ▼
+  fork's gh-pages branch → GitHub Pages table
 ```
 
-Local development uses the Worker-aware command:
+The scheduled task never opens a restaurant page. It only reads
+`data/inbox/latest-waits.json`, updates the local SQLite database, and publishes changed static
+files.
+
+## Local setup
+
+Requirements: Python 3.12+ and GitHub CLI authenticated to the fork.
 
 ```bash
-npm run dev
-```
-
-The primary routes are:
-
-- `/` — Din Tai Fung New York dashboard for party size four
-- `/restaurants/{slug}` — reusable restaurant dashboard
-- `/manage` — ChatGPT-sign-in-gated restaurant configuration
-- `/api/health` — database and collector health
-- `/api/collect/{slug}` — authenticated manual or scheduler-triggered collection
-
-The D1 schema lives in `db/schema.ts`; checked-in migrations live in `drizzle/`. The application
-initializes missing tables defensively and seeds the supplied Din Tai Fung configuration. A public
-page visit reuses the latest stored reading. Manual refreshes and a scheduler credential can invoke
-the collector without exposing secrets in the repository.
-
-### Live source status
-
-The first conservative request to the supplied Din Tai Fung Yelp waitlist URL returned HTTP 403.
-RestoWaitlist records this as `source_blocked`, displays the condition, and does not bypass or evade
-the response. The website and manual/import workflows remain usable while an authorized live data
-source is arranged.
-
-### Deploy on Cloudflare Free
-
-The checked-in `wrangler.jsonc` deploys one Worker, automatically provisions the `DB` D1 binding,
-and registers `*/15 * * * *` as the Cron Trigger. From the repository root:
-
-```bash
-npm ci
-npx wrangler login
-npm run deploy
-```
-
-Complete Cloudflare's browser authorization when `wrangler login` opens it. The deploy command
-prints the public `workers.dev` URL. Verify the deployment at `/api/health`, then confirm the cron
-under **Workers & Pages > restowaitlist > Settings > Triggers**. The application creates its tables
-and Din Tai Fung record on first access, so no separate first-deploy migration command is required.
-
-The direct Cloudflare deployment does not provide OpenAI Sites' `/manage` authentication routes.
-The dashboard and Cron Trigger work independently; configure a Cloudflare-native admin login before
-exposing management functions there.
-
-## Python collection toolkit
-
-`dtf-waitwatch` records a restaurant's publicly displayed wait estimate on a fixed schedule,
-preserves the parsed evidence, produces a standalone report, and recommends a risk-aware time to
-join a waitlist. Despite the historical project name, locations and providers are configuration:
-the same program can monitor Din Tai Fung, La Parisienne, or another restaurant when the source
-permits automated access.
-
-The included real-world example is configured for the user-supplied Din Tai Fung New York Yelp
-waitlist URL with `party_size=4`. It is disabled until permission is acknowledged. The project does
-not log in, bypass protection, collect customer data, or click any Join/Submit/Confirm control.
-
-## Install
-
-Python 3.12 or newer is required.
-
-With `uv`:
-
-```bash
-uv venv
-uv pip install -e ".[dev]"
-```
-
-With ordinary `pip`:
-
-```bash
-python -m venv .venv
-# macOS/Linux
-source .venv/bin/activate
-# Windows PowerShell: .\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-```
-
-Playwright is optional and should be used only when the original authorized HTTP response does not
-contain the visible wait value:
-
-```bash
-python -m pip install -e ".[browser]"
-playwright install chromium
-```
-
-## First run and authorization
-
-Copy the documented example, then run the wizard. The wizard reuses the copied values as defaults:
-
-```bash
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -e ".[dev]"
 cp config.example.toml config.toml
-dtf-waitwatch init
 ```
 
-On PowerShell, use `Copy-Item config.example.toml config.toml`. Automated sources show their exact
-URL and ask you to confirm that you reviewed applicable terms and have permission to poll it. This
-local acknowledgment is an audit aid; it does **not** grant permission. If the terms do not permit
-automation, select `manual` and keep the fully functional CSV workflow.
+`config.toml` is ignored by Git. The example defaults to parties 2–6, a 15-minute interval, and
+manual snapshots. It keeps the supplied Yelp page only as source metadata; no command reads it.
 
-The Din Tai Fung example uses:
-
-```text
-https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4
-```
-
-The analogous user-supplied La Parisienne example demonstrates restaurant portability:
-
-```text
-https://www.yelp.com/waitlist/la-parisienne-new-york-5?party_size=4&utm_medium=waitlist_widget&utm_source=biz_details
-```
-
-For another restaurant, replace `location.name`, `location.official_url`,
-`location.wait_source_url`, `location.provider`, `location.timezone`, and the CSS `source.selector`.
-Keep the party size in `[collection]` consistent with the waitlist URL. Add verified opening hours
-if known. No secrets belong in this file.
-
-## Validate and collect
-
-`doctor` validates the timezone and database, performs one permitted read, and prints exactly the
-text/value the parser thinks is the wait estimate. It never joins a waitlist:
+Enter a complete reading after viewing values through an allowed route:
 
 ```bash
-dtf-waitwatch doctor
-dtf-waitwatch collect-once
-dtf-waitwatch run --days 5 --interval-minutes 15
-dtf-waitwatch status
+.venv/bin/dtf-waitwatch capture \
+  --wait '2=No wait' \
+  --wait '3=10-15 mins' \
+  --wait '4=20 min' \
+  --wait '5=30+ min' \
+  --wait '6=Waitlist closed'
 ```
 
-HTTP is preferred because it makes one ordinary request. If `doctor` reports that the selector did
-not match and an authorized inspection confirms the wait value exists only after JavaScript
-rendering, install the browser extra, set `source.type = "playwright"`, and configure the exact
-visible-value selector. Playwright loads one page and reads one element; it does not click or submit.
-HTTP 401/403/429, CAPTCHA, and bot-block responses are terminal for that interval and are not evaded.
+This writes an atomic snapshot to `data/inbox/latest-waits.json`. You can instead write the same
+format from an authorized system:
 
-Keep the machine awake, powered, and connected for the five-day window. The scheduler uses
-`start + n × interval`, so it does not drift. Restarting resumes the persisted run, labels elapsed
-slots `missed_due_to_downtime`, and waits for the next scheduled slot instead of polling rapidly.
-
-## Manual CSV mode
-
-Set `source.type = "manual"` and `source.manual_csv_path` as needed. A sample is in
-`examples/manual-waits.csv` with these columns:
-
-```text
-observed_at_local,party_size,status,wait_min_minutes,wait_max_minutes,raw_wait_text
+```json
+{
+  "schema_version": 1,
+  "captured_at": "2026-07-20T18:15:00-04:00",
+  "waits": {
+    "2": "No wait",
+    "3": "10-15 mins",
+    "4": "20 min",
+    "5": "30+ min",
+    "6": "Waitlist closed"
+  }
+}
 ```
 
-Import a history directly:
+Ingest that snapshot and generate the local static table:
 
 ```bash
-dtf-waitwatch import-csv examples/manual-waits.csv
+.venv/bin/dtf-waitwatch sync-snapshot --config config.toml
+python3 -m http.server 8000 --directory site
 ```
 
-Timestamps without an offset are interpreted in the configured restaurant timezone. Only short
-wait text is stored; do not put customer names, phone numbers, email addresses, or notes containing
-personal data in the CSV.
+Open `http://localhost:8000`. The site shows the most recent 31 days by default; SQLite retains
+the full local history. Use `--days` with `sync-snapshot` or `export-site` to change the published
+window, or omit it to publish all history.
 
-## Reports, exports, and recommendations
+## Continuous local operation
+
+Install the macOS user LaunchAgent after the first local sync:
 
 ```bash
-dtf-waitwatch export --format csv --output data/waits.csv
-dtf-waitwatch report --output reports/wait-report.html
-dtf-waitwatch recommend --target "2026-08-01 19:00" --party-size 4 --risk 0.80
-dtf-waitwatch recommend --target "next Saturday 19:00" --party-size 4 --format json
+./scripts/install-launch-agent.sh
 ```
 
-The algorithm evaluates 15-minute candidates in the prior four hours. It first seeks the same
-weekday across at least three dates, then the same weekday/weekend category, then all days at nearby
-times. Samples must be within ±60 minutes; closer slots weigh more, and each date is normalized so
-adjacent observations do not masquerade as independent days. P50 uses range midpoints. Conservative
-percentiles use displayed upper bounds; an open-ended `90+` value necessarily uses its 90-minute
-lower bound and emits a warning. The latest candidate whose risk-percentile wait ends by the target
-is selected, but never before configured opening.
+It runs at 1, 16, 31, and 46 minutes past each hour, allowing a snapshot captured near each
+quarter-hour to be put in its correct table slot. Its logs are under `logs/`. It skips a snapshot
+older than 30 minutes and does not manufacture a row when no complete fresh snapshot exists.
 
-Record actual outcomes to calibrate the difference between displayed and real waits:
+Useful checks:
 
 ```bash
-dtf-waitwatch record-actual \
-  --party-size 4 \
-  --joined-at "2026-08-01 17:30" \
-  --seated-at "2026-08-01 18:52" \
-  --displayed-min 70 \
-  --displayed-max 90
+launchctl print gui/$(id -u)/com.restowaitlist.waitwatch
+tail -f logs/waitwatch.log
+.venv/bin/dtf-waitwatch status --config config.toml
 ```
 
-Without those records the program explicitly says that no actual-wait calibration is available. A
-capped median adjustment is used after feedback exists; displayed estimates are never claimed to
-equal seating waits.
+## GitHub Pages publishing
 
-## Fully synthetic demonstration
-
-This contacts no restaurant and labels every value synthetic:
+The publisher copies `site/` into a separate `gh-pages` branch. Local observations and generated
+`site/data/waits.json` stay out of the code branch and the PR.
 
 ```bash
-dtf-waitwatch init-demo --force
-dtf-waitwatch run --demo --accelerated
-dtf-waitwatch report
-dtf-waitwatch recommend --target "next Saturday 19:00" --party-size 2
+./scripts/sync-and-publish.sh
 ```
 
-The accelerated run creates five days of deterministic history immediately and an automatic HTML
-report. Do not combine the demo database with real observations.
-
-## Docker Compose
-
-After preparing `config.toml`, start the ordinary HTTP/manual/demo image:
+On the first run, configure GitHub Pages on the fork to deploy the root of `gh-pages`:
 
 ```bash
-docker compose build waitwatch
-docker compose run --rm waitwatch doctor --config /app/config.toml
-docker compose up -d waitwatch
-docker compose logs -f waitwatch
+./scripts/enable-github-pages.sh
 ```
 
-For a permitted browser source:
+The script creates or updates the Pages setting. The resulting address is normally
+`https://OWNER.github.io/restowaitlist/`. The static table has no server-side collector and no
+secrets.
+
+## Validation
 
 ```bash
-docker compose --profile browser build waitwatch-browser
-docker compose --profile browser up -d waitwatch-browser
+.venv/bin/python -m pytest
+.venv/bin/python -m ruff check .
+PATH="/opt/homebrew/opt/node@25/bin:$PATH" npm ci
+PATH="/opt/homebrew/opt/node@25/bin:$PATH" npm run typecheck
+PATH="/opt/homebrew/opt/node@25/bin:$PATH" npm run lint
+PATH="/opt/homebrew/opt/node@25/bin:$PATH" npm run test:web
 ```
 
-Both services persist `./data` and `./reports`; use only one collector service for a location.
-
-## Database backup and restore
-
-Stop the collector (or use SQLite's online backup command), then copy the database and its WAL/SHM
-companions if present:
-
-```bash
-sqlite3 data/waits.sqlite3 ".backup 'data/waits-backup.sqlite3'"
-cp data/waits-backup.sqlite3 data/waits.sqlite3
-```
-
-On PowerShell, the safe offline equivalent is `Copy-Item` after `docker compose stop` or after the
-local collector exits. Restore into the path named by `[database].path`.
-
-## Troubleshooting
-
-- **Permission refused:** use manual CSV mode unless the provider/source explicitly permits polling.
-- **Selector stopped matching:** run `doctor`; update only `source.selector`/`attribute` after an
-  authorized inspection. Stored hashes and short fragments help distinguish markup changes.
-- **Blocked response:** the app records `source_blocked` and does not retry or evade it.
-- **Missing intervals:** `status` and the report distinguish downtime from source and parser errors.
-- **Wrong local times:** use an IANA zone such as `America/New_York`, not a fixed abbreviation.
-- **Recommendation unavailable:** collect valid open-hour observations near candidate join times.
-
-Five days is enough to exercise the workflow but usually only one observation date per weekday, so
-same-weekday confidence will be very low. Multiple weeks add independent dates, improve the fallback
-level, expose week-to-week variability, and can raise confidence. Holidays, weather, promotions,
-source behavior, and walk-in demand can still make history unrepresentative.
-
-## Development checks
-
-Tests never contact external sites and use only synthetic HTML/data:
-
-```bash
-pytest
-ruff check .
-ruff format --check .
-npm run typecheck
-npm run lint
-npm run test:web
-npm run build
-```
+The repository also retains the original generic Python reporting toolkit and worker-oriented web
+experiment. The static `site/` plus local snapshot workflow above is the supported deployment for
+this use case.

@@ -11,6 +11,7 @@ venv/
 config.toml
 data/
 reports/
+logs/
 playwright-report/
 .env
 .dev.vars*
@@ -20,3 +21,10 @@ node_modules/
 dist/
 .wrangler/
 *.tsbuildinfo
+
+# The Pages source includes a checked-in empty fallback.  The real export stays
+# local and is copied directly to the separate gh-pages branch by the publisher.
+!site/
+!site/data/
+!site/data/.gitignore
+!site/data/empty-waits.json
