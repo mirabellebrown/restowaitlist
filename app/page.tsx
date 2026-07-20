@@ -19,7 +19,6 @@
 
 import { Dashboard } from "@/app/dashboard";
 import { DTF_SLUG, getRestaurantDashboard } from "@/db/storage";
-import { refreshRestaurant } from "@/lib/collector";
 import { dinTaiFungSeed } from "@/lib/seed";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +26,6 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   let data = dinTaiFungSeed;
   try {
-    await refreshRestaurant(DTF_SLUG);
     data = (await getRestaurantDashboard(DTF_SLUG)) ?? dinTaiFungSeed;
   } catch {
     // The static fallback keeps the service-status page useful during a

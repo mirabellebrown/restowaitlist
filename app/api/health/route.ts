@@ -11,7 +11,7 @@ export async function GET() {
   try {
     await initializeDatabase();
     const restaurants = await listRestaurants();
-    const collectors = await Promise.all(
+    const observations = await Promise.all(
       restaurants.map(async (restaurant) => {
         const partySize = restaurant.partySizes[0];
         const latest = partySize
@@ -31,7 +31,8 @@ export async function GET() {
         status: "ok",
         database: "connected",
         restaurantCount: restaurants.length,
-        collectors,
+        mode: "manual",
+        observations,
         checkedAt: new Date().toISOString(),
       },
       { headers: { "cache-control": "no-store" } },

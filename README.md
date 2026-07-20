@@ -1,9 +1,9 @@
 # RestoWaitlist
 
 RestoWaitlist is a hosted restaurant wait dashboard plus the original `dtf-waitwatch` Python
-collection toolkit. The web application shows the latest status, historical readings, a
-confidence-aware timing recommendation, and an explicit link to the restaurant's official
-waitlist. It never joins a waitlist automatically.
+collection toolkit. The web application links to a restaurant's official waitlist, lets its owner
+record the displayed wait manually, and turns those readings into history and a confidence-aware
+timing recommendation. It does not scrape or join a waitlist automatically.
 
 The production-shaped web surface uses React/vinext on a Cloudflare Worker-compatible runtime and
 D1 for durable restaurant configuration and observation history. Its signed-in management page
@@ -34,24 +34,23 @@ The primary routes are:
 - `/restaurants/{slug}` — reusable restaurant dashboard
 - `/manage` — ChatGPT-sign-in-gated restaurant configuration
 - `/api/health` — database and collector health
-- `/api/collect/{slug}` — authenticated manual or scheduler-triggered collection
+- `/api/observations/{slug}` — authenticated manual wait entry
 
 The D1 schema lives in `db/schema.ts`; checked-in migrations live in `drizzle/`. The application
 initializes missing tables defensively and seeds the supplied Din Tai Fung configuration. A public
-page visit reuses the latest stored reading. Manual refreshes and a scheduler credential can invoke
-the collector without exposing secrets in the repository.
+page visit reuses the latest stored reading. Open the official waitlist from the dashboard, enter
+the wait shown there, and RestoWaitlist timestamps and saves it.
 
 ### Live source status
 
-The first conservative request to the supplied Din Tai Fung Yelp waitlist URL returned HTTP 403.
-RestoWaitlist records this as `source_blocked`, displays the condition, and does not bypass or evade
-the response. The website and manual/import workflows remain usable while an authorized live data
-source is arranged.
+The supplied Din Tai Fung Yelp waitlist URL declines automated access. The web application therefore
+runs in manual mode and makes no background request to Yelp. Automated collection remains disabled
+unless an authorized data source is arranged later.
 
 ### Deploy on Cloudflare Free
 
-The checked-in `wrangler.jsonc` deploys one Worker, automatically provisions the `DB` D1 binding,
-and registers `*/15 * * * *` as the Cron Trigger. From the repository root:
+The checked-in `wrangler.jsonc` deploys one Worker and automatically provisions the `DB` D1 binding.
+From the repository root:
 
 ```bash
 npm ci
@@ -60,9 +59,9 @@ npm run deploy
 ```
 
 Complete Cloudflare's browser authorization when `wrangler login` opens it. The deploy command
-prints the public `workers.dev` URL. Verify the deployment at `/api/health`, then confirm the cron
-under **Workers & Pages > restowaitlist > Settings > Triggers**. The application creates its tables
-and Din Tai Fung record on first access, so no separate first-deploy migration command is required.
+prints the public `workers.dev` URL. Verify the deployment at `/api/health`. The application creates
+its tables and Din Tai Fung record on first access, so no separate first-deploy migration command is
+required.
 
 The direct Cloudflare deployment does not provide OpenAI Sites' `/manage` authentication routes.
 The dashboard and Cron Trigger work independently; configure a Cloudflare-native admin login before

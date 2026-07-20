@@ -36,7 +36,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const user = await getChatGPTUser();
-  if (!user && process.env.NODE_ENV !== "development") {
+  const hostname = new URL(request.url).hostname;
+  const localPreview = hostname === "127.0.0.1" || hostname === "localhost" || hostname === "[::1]";
+  if (!user && !localPreview && process.env.NODE_ENV !== "development") {
     return NextResponse.json({ error: "Sign in is required" }, { status: 401 });
   }
 

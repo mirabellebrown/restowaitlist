@@ -35,8 +35,8 @@ export function ManageClient({
         partySizes: String(form.get("partySizes") ?? "")
           .split(",")
           .map((value) => Number(value.trim())),
-        intervalMinutes: Number(form.get("intervalMinutes")),
-        permissionAcknowledged: form.get("permissionAcknowledged") === "on",
+        intervalMinutes: 15,
+        permissionAcknowledged: false,
         active: true,
       }),
     });
@@ -62,9 +62,9 @@ export function ManageClient({
       </nav>
 
       <header className="manage-header">
-        <p className="eyebrow">COLLECTION CONTROL</p>
-        <h1>Restaurant sources</h1>
-        <p>Add only public sources you have reviewed and are permitted to monitor. Acknowledgment never creates permission.</p>
+        <p className="eyebrow">MANUAL TRACKING</p>
+        <h1>Restaurant waitlists</h1>
+        <p>Add a restaurant and its public waitlist link. RestoWaitlist will save only the readings you enter yourself.</p>
       </header>
 
       <section className="manage-grid">
@@ -94,13 +94,11 @@ export function ManageClient({
           </div>
           <label>Address<input name="address" required placeholder="9 Maiden Lane, New York, NY" /></label>
           <label>Official page<input type="url" name="officialUrl" required placeholder="https://…" /></label>
-          <label>Public wait source<input type="url" name="waitSourceUrl" required placeholder="https://…?party_size=4" /></label>
+          <label>Waitlist page<input type="url" name="waitSourceUrl" required placeholder="https://…?party_size=4" /></label>
           <div className="form-pair">
             <label>Provider<input name="provider" defaultValue="Yelp Waitlist" required /></label>
             <label>Party sizes<input name="partySizes" defaultValue="4" required /></label>
           </div>
-          <label>Minimum interval<input type="number" name="intervalMinutes" defaultValue="15" min="15" max="1440" required /></label>
-          <label className="check-label"><input type="checkbox" name="permissionAcknowledged" required /><span>I reviewed permission for automated access to this source.</span></label>
           <button type="submit" disabled={saving}>{saving ? "Saving…" : "Save restaurant"}</button>
           {message ? <p className="form-message" role="status">{message}</p> : null}
         </form>

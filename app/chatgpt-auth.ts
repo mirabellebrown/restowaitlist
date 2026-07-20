@@ -40,6 +40,22 @@ export async function requireChatGPTUser(
 ): Promise<ChatGPTUser> {
   const user = await getChatGPTUser();
   if (user) return user;
+  const requestHeaders = await headers();
+  const host = (requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "")
+    .split(":")[0]
+    .toLowerCase();
+  if (
+    process.env.NODE_ENV === "development" ||
+    host === "127.0.0.1" ||
+    host === "localhost" ||
+    host === "[::1]"
+  ) {
+    return {
+      displayName: "Local preview",
+      email: "local@restowaitlist.test",
+      fullName: "Local preview",
+    };
+  }
 
   redirect(chatGPTSignInPath(returnTo));
 }

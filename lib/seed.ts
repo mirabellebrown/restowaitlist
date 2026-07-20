@@ -23,26 +23,6 @@ export const dinTaiFungSeed: RestaurantDashboard = {
     createdAt: collectedAt,
     updatedAt: collectedAt,
   },
-  observations: [
-    {
-      id: 1,
-      restaurantId: 1,
-      partySize: 4,
-      observedAt: collectedAt,
-      status: "source_blocked",
-      waitMinMinutes: null,
-      waitMaxMinutes: null,
-      waitMidpointMinutes: null,
-      rawWaitText: "",
-      sourceUrl:
-        "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_size=4",
-      sourceProvider: "Yelp Waitlist",
-      responseStatusCode: 403,
-      responseDurationMs: null,
-      errorMessage:
-        "Yelp declined the initial automated request with HTTP 403. No bypass was attempted.",
-      synthetic: false,
-    },
-  ],
+  observations: [],
   recommendation: summarizeRecommendation([]),
 };

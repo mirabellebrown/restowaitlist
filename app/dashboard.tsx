@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { summarizeRecommendation } from "@/lib/recommendation";
 import type { Observation, RestaurantDashboard } from "@/lib/types";
 
 const statusCopy: Record<Observation["status"], string> = {
@@ -74,25 +75,43 @@ function HistoryChart({ observations }: { observations: Observation[] }) {
 
 export function Dashboard({ data }: { data: RestaurantDashboard }) {
   const [partySize, setPartySize] = useState(data.restaurant.partySizes[0] ?? 4);
-  const [refreshState, setRefreshState] = useState<"idle" | "loading" | "done">("idle");
+  const [entryStatus, setEntryStatus] = useState("wait_available");
+  const [waitMin, setWaitMin] = useState("");
+  const [waitMax, setWaitMax] = useState("");
+  const [saveState, setSaveState] = useState<"idle" | "loading" | "done">("idle");
+  const [saveError, setSaveError] = useState("");
   const observations = useMemo(
     () => data.observations.filter((item) => item.partySize === partySize),
     [data.observations, partySize],
   );
+  const recommendation = useMemo(
+    () => summarizeRecommendation(observations),
+    [observations],
+  );
   const latest = observations.at(-1);
 
-  async function refresh() {
-    setRefreshState("loading");
+  async function saveManualReading(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaveState("loading");
+    setSaveError("");
     try {
-      await fetch(`/api/collect/${data.restaurant.slug}`, {
+      const response = await fetch(`/api/observations/${data.restaurant.slug}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ force: true, partySize }),
+        body: JSON.stringify({
+          partySize,
+          status: entryStatus,
+          waitMinMinutes: waitMin,
+          waitMaxMinutes: waitMax,
+        }),
       });
-      setRefreshState("done");
-      window.setTimeout(() => window.location.reload(), 450);
-    } catch {
-      setRefreshState("idle");
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(result.error ?? "The reading could not be saved");
+      setSaveState("done");
+      window.setTimeout(() => window.location.reload(), 350);
+    } catch (error) {
+      setSaveState("idle");
+      setSaveError(error instanceof Error ? error.message : "The reading could not be saved");
     }
   }
 
@@ -103,7 +122,7 @@ export function Dashboard({ data }: { data: RestaurantDashboard }) {
         <div className="nav-links">
           <a href="#history">History</a>
           <Link href="/manage">Manage</Link>
-          <span className={`live-dot ${latest?.status === "wait_available" ? "is-live" : ""}`} aria-hidden="true" />
+          <span className={`live-dot ${latest ? "is-live" : ""}`} aria-hidden="true" />
           NYC
         </div>
       </nav>
@@ -112,7 +131,7 @@ export function Dashboard({ data }: { data: RestaurantDashboard }) {
         <div className="hero-copy">
           <p className="eyebrow">{data.restaurant.city} · PARTY OF {partySize}</p>
           <h1>Time the table.<br />Skip the guesswork.</h1>
-          <p className="lede">Public wait signals, saved over time and turned into a calmer dinner plan.</p>
+          <p className="lede">Check the official waitlist, save what you see, and turn each reading into a calmer dinner plan.</p>
           <div className="party-picker" aria-label="Party size">
             <span>Party size</span>
             {data.restaurant.partySizes.map((size) => (
@@ -130,7 +149,7 @@ export function Dashboard({ data }: { data: RestaurantDashboard }) {
           </div>
           <div className="wait-value">{currentWait(latest)}</div>
           <p className="wait-label">
-            {latest ? `Checked ${formatTime(latest.observedAt)}` : "The collector has not run yet."}
+            {latest ? `Recorded ${formatTime(latest.observedAt)}` : "No manual reading has been recorded yet."}
           </p>
           {latest?.errorMessage ? <p className="source-note">{latest.errorMessage}</p> : null}
           <div className="card-rule" />
@@ -139,18 +158,40 @@ export function Dashboard({ data }: { data: RestaurantDashboard }) {
             <div><p className="micro-label">PARTY</p><p>{partySize} guests</p></div>
           </div>
           <div className="card-actions">
-            <a className="primary-button" href={data.restaurant.waitSourceUrl} rel="noreferrer" target="_blank">Open official waitlist <span aria-hidden="true">↗</span></a>
-            <button className="refresh-button" disabled={refreshState === "loading"} onClick={refresh}>
-              {refreshState === "loading" ? "Checking…" : refreshState === "done" ? "Recorded" : "Refresh reading"}
-            </button>
+            <a className="primary-button" href={data.restaurant.waitSourceUrl} rel="noreferrer" target="_blank">1. Open official waitlist <span aria-hidden="true">↗</span></a>
+            <form className="manual-entry" onSubmit={saveManualReading}>
+              <div className="manual-heading">
+                <div><span>2.</span><strong>Record what you see</strong></div>
+                <small>Saved with the current time</small>
+              </div>
+              <label className="status-field">
+                <span>Status</span>
+                <select value={entryStatus} onChange={(event) => setEntryStatus(event.target.value)}>
+                  <option value="wait_available">Wait shown</option>
+                  <option value="no_wait">No wait</option>
+                  <option value="waitlist_closed">Waitlist closed</option>
+                  <option value="restaurant_closed">Restaurant closed</option>
+                </select>
+              </label>
+              {entryStatus === "wait_available" ? (
+                <div className="wait-fields">
+                  <label><span>Minimum minutes</span><input aria-label="Minimum wait in minutes" inputMode="numeric" max="360" min="0" onChange={(event) => setWaitMin(event.target.value)} placeholder="45" required type="number" value={waitMin} /></label>
+                  <label><span>Maximum (optional)</span><input aria-label="Maximum wait in minutes" inputMode="numeric" max="360" min="0" onChange={(event) => setWaitMax(event.target.value)} placeholder="60" type="number" value={waitMax} /></label>
+                </div>
+              ) : null}
+              <button className="save-button" disabled={saveState === "loading"} type="submit">
+                {saveState === "loading" ? "Saving…" : saveState === "done" ? "Saved" : "Save manual reading"}
+              </button>
+              {saveError ? <p className="entry-error" role="alert">{saveError}</p> : null}
+            </form>
           </div>
         </article>
       </section>
 
       <section className="signal-strip" aria-label="Service status">
         <div><span>01</span><strong>Official handoff</strong><small>Never joins automatically</small></div>
-        <div><span>02</span><strong>{data.restaurant.intervalMinutes}-minute cache</strong><small>Conservative collection</small></div>
-        <div><span>03</span><strong>{data.recommendation.confidence} confidence</strong><small>{data.recommendation.sampleCount} usable readings</small></div>
+        <div><span>02</span><strong>Manual check-ins</strong><small>No automated Yelp requests</small></div>
+        <div><span>03</span><strong>{recommendation.confidence} confidence</strong><small>{recommendation.sampleCount} usable readings</small></div>
       </section>
 
       <section className="insights" id="history">
@@ -160,9 +201,9 @@ export function Dashboard({ data }: { data: RestaurantDashboard }) {
         </div>
         <HistoryChart observations={observations} />
         <div className="insight-grid">
-          <article><p className="micro-label">MEDIAN WAIT</p><strong>{data.recommendation.p50Minutes === null ? "—" : `${data.recommendation.p50Minutes} min`}</strong></article>
-          <article><p className="micro-label">SAFER BUFFER</p><strong>{data.recommendation.p80Minutes === null ? "—" : `${data.recommendation.p80Minutes} min`}</strong></article>
-          <article className="recommendation-card"><p className="micro-label">RECOMMENDATION</p><p>{data.recommendation.message}</p></article>
+          <article><p className="micro-label">MEDIAN WAIT</p><strong>{recommendation.p50Minutes === null ? "—" : `${recommendation.p50Minutes} min`}</strong></article>
+          <article><p className="micro-label">SAFER BUFFER</p><strong>{recommendation.p80Minutes === null ? "—" : `${recommendation.p80Minutes} min`}</strong></article>
+          <article className="recommendation-card"><p className="micro-label">RECOMMENDATION</p><p>{recommendation.message}</p></article>
         </div>
       </section>
 

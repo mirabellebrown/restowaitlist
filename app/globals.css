@@ -111,6 +111,23 @@ a { color: inherit; }
 .refresh-button { border: 1px solid var(--ink); background: transparent; padding: 13px 16px; color: var(--ink); font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
 .refresh-button:hover:not(:disabled) { background: var(--ink); color: var(--cream); }
 .refresh-button:disabled { cursor: wait; opacity: .6; }
+.manual-entry { display: grid; gap: 13px; padding: 16px; border: 1px solid var(--ink); background: rgba(255,255,255,.35); }
+.manual-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.manual-heading div { display: flex; align-items: center; gap: 9px; }
+.manual-heading div > span { font-family: Georgia, serif; font-size: 23px; color: var(--red); }
+.manual-heading strong { font-size: 13px; }
+.manual-heading small { color: #776f67; font-size: 10px; }
+.manual-entry label { display: grid; gap: 6px; }
+.manual-entry label > span { color: #756d65; font-size: 9px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+.manual-entry input,
+.manual-entry select { width: 100%; border: 1px solid #b9aea2; border-radius: 0; background: var(--cream); padding: 10px; color: var(--ink); font: inherit; font-size: 13px; outline: none; }
+.manual-entry input:focus,
+.manual-entry select:focus { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+.wait-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.save-button { border: 1px solid var(--ink); background: var(--ink); padding: 13px 16px; color: var(--cream); font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
+.save-button:hover:not(:disabled) { background: var(--red-dark); border-color: var(--red-dark); }
+.save-button:disabled { cursor: wait; opacity: .6; }
+.entry-error { margin: 0; color: var(--red-dark); font-size: 11px; line-height: 1.4; }
 .party-picker { display: flex; align-items: center; gap: 8px; margin-top: 32px; }
 .party-picker span { margin-right: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
 .party-picker button { min-width: 38px; height: 38px; border: 1px solid var(--line); background: transparent; color: var(--ink); font-weight: 750; cursor: pointer; }
@@ -205,6 +222,9 @@ footer a { font-size: 12px; font-weight: 750; text-decoration: none; }
   .card-topline { align-items: flex-start; }
   .status-pill { text-align: right; }
   .restaurant-row { grid-template-columns: 1fr; }
+  .manual-heading { align-items: flex-start; }
+  .manual-heading small { max-width: 90px; text-align: right; }
+  .wait-fields { grid-template-columns: 1fr; }
   .insights { margin-top: 70px; padding: 0 18px 70px; }
   .section-heading { display: block; }
   .section-heading > p { margin-top: 12px; }

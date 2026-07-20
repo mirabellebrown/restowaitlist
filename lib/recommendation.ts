@@ -13,7 +13,9 @@ export function summarizeRecommendation(
   observations: Observation[],
 ): RecommendationSummary {
   const waits = observations.flatMap((observation) =>
-    observation.status === "wait_available" &&
+    (observation.status === "wait_available" ||
+      observation.status === "manual" ||
+      observation.status === "no_wait") &&
     observation.waitMidpointMinutes !== null
       ? [observation.waitMidpointMinutes]
       : [],
