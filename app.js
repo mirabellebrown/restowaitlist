@@ -50,8 +50,9 @@ function render(data) {
   const timezone = restaurant.timezone || "America/New_York";
   restaurantName.textContent = restaurant.name || "Wait table";
   document.title = `${restaurantName.textContent} wait table`;
-  metadata.textContent = data.generated_at_utc
-    ? `Last published ${localTimestamp(data.generated_at_utc, timezone)} (${timezone})`
+  const latestObservation = data.latest_observation_at_utc || data.generated_at_utc;
+  metadata.textContent = latestObservation
+    ? `Latest observation ${localTimestamp(latestObservation, timezone)} (${timezone})`
     : `No observations published yet (${timezone})`;
   rowCount.textContent = rows.length ? `${rows.length} timestamps` : "";
 

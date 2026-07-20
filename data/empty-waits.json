@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": null,
+  "latest_observation_at_utc": null,
   "restaurant": {
     "name": "Din Tai Fung New York",
     "timezone": "America/New_York",
