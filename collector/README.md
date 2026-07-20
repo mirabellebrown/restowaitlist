@@ -70,17 +70,21 @@ RWL_DRY_RUN=true ./run.sh
 
 ## Schedule every 15 minutes (macOS launchd)
 
+Runs at :00/:15/:30/:45 from **11:00–23:45 ET** only (quiet midnight–11am).
+The LaunchAgent uses local clock hours; `collect.py` also enforces the same
+window in `America/New_York` so overnight scrapes cannot slip through.
+
 ```bash
 cp com.restowaitlist.collector.plist ~/Library/LaunchAgents/
-# edit the plist WorkingDirectory / ProgramArguments if your clone path differs
-launchctl load ~/Library/LaunchAgents/com.restowaitlist.collector.plist
+launchctl bootout gui/$(id -u)/com.restowaitlist.collector 2>/dev/null || true
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.restowaitlist.collector.plist
 # logs: ~/.restowaitlist/collector.log and collector.err.log
-# to stop: launchctl unload ~/Library/LaunchAgents/com.restowaitlist.collector.plist
+# to stop: launchctl bootout gui/$(id -u)/com.restowaitlist.collector
 ```
 
-Runs at :00/:15/:30/:45. Each cycle warms one Chrome profile, reads the
-configured party sizes with human-like pauses, and publishes one batch.
-Readings are bucketed to the 15-minute slot so re-runs are idempotent.
+Each cycle warms one Chrome profile, reads the configured party sizes with
+human-like pauses, and publishes one batch. Readings are bucketed to the
+15-minute slot so re-runs are idempotent.
 
 ## Hosted dashboard
 
