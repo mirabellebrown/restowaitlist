@@ -11,24 +11,25 @@ wait_source_url = "https://www.yelp.com/waitlist/din-tai-fung-new-york-3?party_s
 provider = "yelp-waitlist"
 
 [source]
-# Try one ordinary HTTP response first. If the authorized visible value is rendered only by
-# JavaScript, install the browser extra and change this to "playwright".
-type = "http"
+# The default path is a locally entered, complete snapshot. It never opens Yelp or any other
+# third-party site. Use this unless you have a separately authorized data feed.
+type = "manual"
 permission_acknowledged = false
 permission_reviewed_at = ""
-# This must select only the current displayed wait estimate. Source markup changes over time;
-# `doctor` prints exactly what this selector produces. Update it after an authorized inspection.
+# These options are retained for explicitly authorized generic sources only.
 selector = "[data-wait-estimate], .wait-estimate, .wait-time"
 attribute = ""
 manual_csv_path = "./data/manual-waits.csv"
+manual_snapshot_path = "./data/inbox/latest-waits.json"
 timeout_seconds = 20.0
 transient_retry_delay_seconds = 1.0
 user_agent = "dtf-waitwatch/0.1 (permission-aware personal monitoring)"
 
 [collection]
-# The waitlist URL contains party_size=4. Automated profiles intentionally allow one party size
-# so a location receives no more than one page load per interval.
-party_sizes = [4]
+# One manual snapshot must include every configured party size. The local scheduled job stores
+# exactly one 15-minute row for sizes 2 through 6, without fabricating values when no snapshot
+# is available.
+party_sizes = [2, 3, 4, 5, 6]
 duration_days = 5.0
 interval_minutes = 15
 

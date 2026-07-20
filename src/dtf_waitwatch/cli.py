@@ -12,6 +12,13 @@ from dtf_waitwatch.config import AppConfig, ConfigError, load_config
 from dtf_waitwatch.database import Database
 from dtf_waitwatch.logging_config import configure_logging
 from dtf_waitwatch.models import SourceType
+from dtf_waitwatch.publishing import (
+    export_site_payload,
+    ingest_snapshot,
+    load_snapshot,
+    parse_snapshot_timestamp,
+    write_snapshot,
+)
 from dtf_waitwatch.recommendation import (
     InsufficientDataError,
     parse_target,
@@ -158,6 +165,11 @@ def initialize(
         manual_csv_path=(
             existing.source.manual_csv_path if existing else "./data/manual-waits.csv"
         ),
+        manual_snapshot_path=(
+            existing.source.manual_snapshot_path
+            if existing
+            else "./data/inbox/latest-waits.json"
+        ),
         opening_hours=opening_hours,
     )
     config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -201,6 +213,7 @@ def init_demo(
             risk=0.80,
             database_path="./data/demo-waits.sqlite3",
             manual_csv_path="./data/manual-waits.csv",
+            manual_snapshot_path="./data/inbox/latest-waits.json",
             opening_hours=hours,
         ),
         encoding="utf-8",
@@ -492,6 +505,148 @@ def import_csv(
     typer.echo(f"Imported {inserted} manual observations into run {run_id}.")
 
 
+@app.command("capture")
+def capture_snapshot(
+    wait: Annotated[
+        list[str] | None,
+        typer.Option("--wait", help="Party size and visible wait text, e.g. 2=10-15 mins"),
+    ] = None,
+    captured_at: Annotated[
+        str | None,
+        typer.Option(help="Optional local ISO timestamp; defaults to the current time"),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option(help="Snapshot path; defaults to source.manual_snapshot_path"),
+    ] = None,
+    config_path: ConfigOption = Path("config.toml"),
+) -> None:
+    """Write one complete manual party-size snapshot for the local sync job.
+
+    This command accepts values copied or entered by a person.  It intentionally
+    does not open, automate, or submit any third-party waitlist page.
+    """
+
+    try:
+        config, _, _ = _context(config_path)
+        waits: dict[int, str] = {}
+        for item in wait or []:
+            try:
+                party_text, raw_wait = item.split("=", maxsplit=1)
+                party_size = int(party_text.strip())
+            except ValueError as exc:
+                raise typer.BadParameter("Each --wait must look like 2=10-15 mins") from exc
+            if not raw_wait.strip():
+                raise typer.BadParameter(f"Party size {party_size} has an empty wait value")
+            if party_size in waits:
+                raise typer.BadParameter(f"Party size {party_size} was supplied more than once")
+            waits[party_size] = raw_wait.strip()
+        timestamp = (
+            parse_snapshot_timestamp(captured_at, config.timezone)
+            if captured_at
+            else datetime.now(UTC)
+        )
+        destination = output or config.manual_snapshot_path
+        if not destination.is_absolute():
+            destination = config.config_path.parent / destination
+        path = write_snapshot(destination, captured_at_utc=timestamp, waits=waits, config=config)
+        typer.echo(f"Manual snapshot written to {path.resolve()}")
+    except (ConfigError, ValueError, OSError) as exc:
+        typer.echo(f"Capture failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+
+@app.command("sync-snapshot")
+def sync_snapshot(
+    input_path: Annotated[
+        Path | None,
+        typer.Option("--input", help="Snapshot JSON; defaults to source.manual_snapshot_path"),
+    ] = None,
+    output: Annotated[
+        Path,
+        typer.Option(help="Static site JSON output path"),
+    ] = Path("site/data/waits.json"),
+    days: Annotated[
+        int | None,
+        typer.Option(help="Published history window in days; omit to publish all history"),
+    ] = 31,
+    max_age_minutes: Annotated[
+        float | None,
+        typer.Option(help="Skip an older snapshot instead of treating it as current"),
+    ] = None,
+    config_path: ConfigOption = Path("config.toml"),
+) -> None:
+    """Ingest one complete local snapshot and regenerate the static table data."""
+
+    try:
+        config, database, location_id = _context(config_path)
+        source_path = input_path or config.manual_snapshot_path
+        if not source_path.is_absolute():
+            source_path = config.config_path.parent / source_path
+        if source_path.exists():
+            snapshot = load_snapshot(source_path, config)
+            result = ingest_snapshot(
+                database=database,
+                config=config,
+                location_id=location_id,
+                snapshot=snapshot,
+                max_age_minutes=max_age_minutes,
+            )
+            slot = result.scheduled_at_utc.astimezone(config.timezone).isoformat()
+            if result.skipped_reason:
+                typer.echo(f"Snapshot skipped for {slot}: {result.skipped_reason}.")
+            else:
+                typer.echo(f"Recorded {result.inserted} observations for {slot}.")
+        else:
+            typer.echo(f"No snapshot found at {source_path}; preserving existing observations.")
+        destination = output if output.is_absolute() else config.config_path.parent / output
+        payload = export_site_payload(
+            destination,
+            database=database,
+            config=config,
+            location_id=location_id,
+            days=days,
+        )
+        typer.echo(
+            f"Published data export: {len(payload['rows'])} table rows -> {destination.resolve()}"
+        )
+    except (ConfigError, ValueError, OSError) as exc:
+        typer.echo(f"Snapshot sync failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+
+@app.command("export-site")
+def export_site(
+    output: Annotated[
+        Path,
+        typer.Option(help="Static site JSON output path"),
+    ] = Path("site/data/waits.json"),
+    days: Annotated[
+        int | None,
+        typer.Option(help="Published history window in days; omit to publish all history"),
+    ] = 31,
+    config_path: ConfigOption = Path("config.toml"),
+) -> None:
+    """Export the local database as the simple GitHub Pages table data file."""
+
+    try:
+        config, database, location_id = _context(config_path)
+        destination = output if output.is_absolute() else config.config_path.parent / output
+        payload = export_site_payload(
+            destination,
+            database=database,
+            config=config,
+            location_id=location_id,
+            days=days,
+        )
+        typer.echo(
+            f"Published data export: {len(payload['rows'])} table rows -> {destination.resolve()}"
+        )
+    except (ConfigError, ValueError, OSError) as exc:
+        typer.echo(f"Site export failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+
 def _print_recommendation(result: object) -> None:
     from dtf_waitwatch.models import Recommendation
 
@@ -576,6 +731,7 @@ def _render_config(
     risk: float,
     database_path: str,
     manual_csv_path: str,
+    manual_snapshot_path: str,
     opening_hours: dict[str, list[str]],
 ) -> str:
     reviewed = _toml_quote(permission_reviewed_at or "")
@@ -597,6 +753,7 @@ def _render_config(
         f"selector = {_toml_quote(selector)}",
         'attribute = ""',
         f"manual_csv_path = {_toml_quote(manual_csv_path)}",
+        f"manual_snapshot_path = {_toml_quote(manual_snapshot_path)}",
         "timeout_seconds = 20.0",
         "transient_retry_delay_seconds = 1.0",
         'user_agent = "dtf-waitwatch/0.1 (permission-aware personal monitoring)"',
