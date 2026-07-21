@@ -161,8 +161,27 @@ a { color: inherit; }
 .chart-line { fill: none; stroke: var(--red); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .chart-points-layer { position: absolute; inset: 0 0 40px; pointer-events: none; }
 .chart-point { position: absolute; width: 14px; height: 14px; padding: 0; border: 2px solid var(--cream); border-radius: 50%; background: var(--red); box-shadow: 0 0 0 1px var(--red); cursor: pointer; pointer-events: auto; transform: translate(-50%, -50%); }
+.chart-point.point-status {
+  background: var(--cream);
+  border-color: #8b5b00;
+  box-shadow: 0 0 0 1px #8b5b00;
+}
+.chart-point.point-waitlist_closed,
+.chart-point.point-restaurant_closed {
+  border-color: #875219;
+  box-shadow: 0 0 0 1px #875219;
+}
+.chart-point.point-temporarily_unavailable {
+  border-color: #77736d;
+  box-shadow: 0 0 0 1px #77736d;
+}
 .chart-point:hover,
 .chart-point:focus-visible { z-index: 3; background: var(--ink); box-shadow: 0 0 0 3px rgba(201,44,33,.2); outline: none; }
+.chart-point.point-status:hover,
+.chart-point.point-status:focus-visible {
+  background: #8b5b00;
+  box-shadow: 0 0 0 3px rgba(139, 91, 0, 0.22);
+}
 .chart-tooltip { position: absolute; bottom: calc(100% + 11px); left: 50%; display: grid; min-width: 145px; gap: 3px; padding: 10px 12px; background: var(--ink); color: var(--cream); font-size: 10px; line-height: 1.3; opacity: 0; pointer-events: none; text-align: left; transform: translateX(-50%) translateY(4px); transition: opacity .14s ease, transform .14s ease; }
 .chart-tooltip::after { position: absolute; top: 100%; left: 50%; width: 0; height: 0; border: 6px solid transparent; border-top-color: var(--ink); content: ""; transform: translateX(-50%); }
 .chart-tooltip strong { color: #ff6b5f; font-family: Georgia, serif; font-size: 16px; font-weight: 500; }

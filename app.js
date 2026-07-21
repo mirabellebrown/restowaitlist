@@ -54,8 +54,11 @@ function formatTime(value, timeZone) {
 function waitText(observation) {
   if (!observation) return "—";
   if (observation.status === "no_wait") return "0 min";
+  if (observation.status === "waitlist_closed") return "Closed";
+  if (observation.status === "restaurant_closed") return "Closed";
+  if (observation.status === "temporarily_unavailable") return "Unavailable";
   if (observation.waitMinMinutes === null || observation.waitMinMinutes === undefined) {
-    return "—";
+    return STATUS_COPY[observation.status] || "—";
   }
   if (
     observation.waitMaxMinutes !== null &&
@@ -65,6 +68,25 @@ function waitText(observation) {
     return `${observation.waitMinMinutes}–${observation.waitMaxMinutes} min`;
   }
   return `${observation.waitMinMinutes} min`;
+}
+
+const CHART_STATUSES = new Set([
+  "wait_available",
+  "manual",
+  "no_wait",
+  "waitlist_closed",
+  "restaurant_closed",
+  "temporarily_unavailable",
+]);
+
+function isNumericWait(item) {
+  return (
+    item.waitMidpointMinutes !== null &&
+    item.waitMidpointMinutes !== undefined &&
+    (item.status === "wait_available" ||
+      item.status === "manual" ||
+      item.status === "no_wait")
+  );
 }
 
 function percentile(values, fraction) {
@@ -143,29 +165,42 @@ function flattenRows(data) {
 
 function renderChart(observations, timeZone) {
   const usable = observations
-    .filter((item) => item.waitMidpointMinutes !== null)
+    .filter((item) => CHART_STATUSES.has(item.status))
     .slice(-24);
 
-  if (usable.length < 2) {
+  if (usable.length < 1) {
     els.chart.className = "empty-chart";
     els.chart.innerHTML =
-      '<div class="empty-line"></div><p>Wait history will appear after two usable readings.</p>';
+      '<div class="empty-line"></div><p>Wait history will appear after the first reading.</p>';
     return;
   }
 
-  const max = Math.max(...usable.map((item) => item.waitMidpointMinutes ?? 0), 15);
+  const numericValues = usable
+    .filter(isNumericWait)
+    .map((item) => item.waitMidpointMinutes ?? 0);
+  const max = Math.max(...numericValues, 15);
   const plotPoints = usable.map((item, index) => {
-    const x = (index / (usable.length - 1)) * 100;
-    const y = 92 - ((item.waitMidpointMinutes ?? 0) / max) * 76;
-    return { item, x, y };
+    const x = usable.length === 1 ? 50 : (index / (usable.length - 1)) * 100;
+    const numeric = isNumericWait(item);
+    const y = numeric
+      ? 92 - ((item.waitMidpointMinutes ?? 0) / max) * 76
+      : 92; // closed / unavailable sit on the baseline
+    return { item, x, y, numeric };
   });
-  const points = plotPoints.map(({ x, y }) => `${x},${y}`).join(" ");
+  const linePoints = plotPoints.filter((point) => point.numeric);
+  const points = linePoints.map(({ x, y }) => `${x},${y}`).join(" ");
+  const fill =
+    linePoints.length >= 2
+      ? `<polyline class="chart-fill" points="0,100 ${points} 100,100"></polyline>
+      <polyline class="chart-line" points="${points}"></polyline>`
+      : linePoints.length === 1
+        ? `<polyline class="chart-line" points="${points}"></polyline>`
+        : "";
 
   els.chart.className = "history-chart";
   els.chart.innerHTML = `
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Recent wait history">
-      <polyline class="chart-fill" points="0,100 ${points} 100,100"></polyline>
-      <polyline class="chart-line" points="${points}"></polyline>
+      ${fill}
     </svg>
     <div class="chart-points-layer"></div>
     <div class="chart-labels">
@@ -175,10 +210,11 @@ function renderChart(observations, timeZone) {
   `;
 
   const layer = els.chart.querySelector(".chart-points-layer");
-  plotPoints.forEach(({ item, x, y }, index) => {
+  plotPoints.forEach(({ item, x, y, numeric }, index) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `chart-point${index === 0 ? " point-start" : ""}${
+    const statusClass = numeric ? "" : ` point-status point-${item.status}`;
+    button.className = `chart-point${statusClass}${index === 0 ? " point-start" : ""}${
       index === plotPoints.length - 1 ? " point-end" : ""
     }`;
     button.style.left = `${x}%`;
@@ -190,6 +226,7 @@ function renderChart(observations, timeZone) {
     button.innerHTML = `
       <span class="chart-tooltip">
         <strong>${waitText(item)}</strong>
+        <span>${STATUS_COPY[item.status] || item.status}</span>
         <span>${formatTime(item.observedAt, timeZone)}</span>
       </span>
     `;
@@ -223,7 +260,7 @@ function render() {
   els.eyebrow.textContent = `NEW YORK · PARTY OF ${state.partySize}`;
   els.partyLabel.textContent = `${state.partySize} guests`;
   els.waitlistLink.href = `${WAITLIST_URL}${state.partySize}`;
-  els.historyCaption.textContent = `Party of ${state.partySize} · last 24 usable readings`;
+  els.historyCaption.textContent = `Party of ${state.partySize} · last 24 readings`;
 
   els.statusPill.textContent = latest
     ? STATUS_COPY[latest.status] || latest.status
