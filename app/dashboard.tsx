@@ -40,7 +40,10 @@ function waitlistUrlForParty(sourceUrl: string, partySize: number): string {
 function currentWait(observation: Observation | undefined): string {
   if (!observation) return "—";
   if (observation.status === "no_wait") return "0 min";
-  if (observation.waitMinMinutes === null) return "—";
+  if (observation.status === "waitlist_closed") return "Closed";
+  if (observation.status === "restaurant_closed") return "Closed";
+  if (observation.status === "temporarily_unavailable") return "Unavailable";
+  if (observation.waitMinMinutes === null) return statusCopy[observation.status] ?? "—";
   if (
     observation.waitMaxMinutes !== null &&
     observation.waitMaxMinutes !== observation.waitMinMinutes
@@ -48,6 +51,24 @@ function currentWait(observation: Observation | undefined): string {
     return `${observation.waitMinMinutes}–${observation.waitMaxMinutes} min`;
   }
   return `${observation.waitMinMinutes} min`;
+}
+
+const chartStatuses = new Set<Observation["status"]>([
+  "wait_available",
+  "manual",
+  "no_wait",
+  "waitlist_closed",
+  "restaurant_closed",
+  "temporarily_unavailable",
+]);
+
+function isNumericWait(item: Observation): boolean {
+  return (
+    item.waitMidpointMinutes !== null &&
+    (item.status === "wait_available" ||
+      item.status === "manual" ||
+      item.status === "no_wait")
+  );
 }
 
 function HistoryChart({
@@ -58,44 +79,54 @@ function HistoryChart({
   timeZone: string;
 }) {
   const usable = observations
-    .filter((item) => item.waitMidpointMinutes !== null)
+    .filter((item) => chartStatuses.has(item.status))
     .slice(-24);
-  if (usable.length < 2) {
+  if (usable.length < 1) {
     return (
       <div className="empty-chart">
         <div className="empty-line" />
-        <p>Wait history will appear after two usable readings.</p>
+        <p>Wait history will appear after the first reading.</p>
       </div>
     );
   }
 
-  const max = Math.max(...usable.map((item) => item.waitMidpointMinutes ?? 0), 15);
+  const numericValues = usable
+    .filter(isNumericWait)
+    .map((item) => item.waitMidpointMinutes ?? 0);
+  const max = Math.max(...numericValues, 15);
   const plotPoints = usable.map((item, index) => {
-      const x = (index / (usable.length - 1)) * 100;
-      const y = 92 - ((item.waitMidpointMinutes ?? 0) / max) * 76;
-      return { item, x, y };
+      const x = usable.length === 1 ? 50 : (index / (usable.length - 1)) * 100;
+      const numeric = isNumericWait(item);
+      const y = numeric
+        ? 92 - ((item.waitMidpointMinutes ?? 0) / max) * 76
+        : 92;
+      return { item, x, y, numeric };
     });
-  const points = plotPoints
-    .map(({ x, y }) => `${x},${y}`)
-    .join(" ");
+  const linePoints = plotPoints.filter((point) => point.numeric);
+  const points = linePoints.map(({ x, y }) => `${x},${y}`).join(" ");
 
   return (
     <div className="history-chart">
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Recent wait history">
-        <polyline className="chart-fill" points={`0,100 ${points} 100,100`} />
-        <polyline className="chart-line" points={points} />
+        {linePoints.length >= 2 ? (
+          <>
+            <polyline className="chart-fill" points={`0,100 ${points} 100,100`} />
+            <polyline className="chart-line" points={points} />
+          </>
+        ) : null}
       </svg>
       <div className="chart-points-layer">
-        {plotPoints.map(({ item, x, y }, index) => (
+        {plotPoints.map(({ item, x, y, numeric }, index) => (
           <button
             aria-label={`${currentWait(item)} at ${formatTime(item.observedAt, timeZone)}`}
-            className={`chart-point ${index === 0 ? "point-start" : ""} ${index === plotPoints.length - 1 ? "point-end" : ""}`}
+            className={`chart-point ${numeric ? "" : `point-status point-${item.status}`} ${index === 0 ? "point-start" : ""} ${index === plotPoints.length - 1 ? "point-end" : ""}`}
             key={item.id}
             style={{ left: `${x}%`, top: `${y}%` }}
             type="button"
           >
             <span className="chart-tooltip">
               <strong>{currentWait(item)}</strong>
+              <span>{statusCopy[item.status]}</span>
               <span>{formatTime(item.observedAt, timeZone)}</span>
             </span>
           </button>
@@ -257,7 +288,7 @@ export function Dashboard({ data }: { data: RestaurantDashboard }) {
       <section className="insights" id="history">
         <div className="section-heading">
           <div><p className="eyebrow">RECENT SIGNAL</p><h2>Wait history</h2></div>
-          <p>Party of {partySize} · last 24 usable readings</p>
+          <p>Party of {partySize} · last 24 readings</p>
         </div>
         <HistoryChart observations={observations} timeZone={data.restaurant.timezone} />
         <div className="insight-grid">
