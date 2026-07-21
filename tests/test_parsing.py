@@ -17,6 +17,16 @@ from dtf_waitwatch.parsing import parse_wait_html, parse_wait_text
         ("No wait", ObservationStatus.NO_WAIT, 0, 0, 0, False),
         ("Walk right in", ObservationStatus.NO_WAIT, 0, 0, 0, False),
         ("Waitlist closed", ObservationStatus.WAITLIST_CLOSED, None, None, None, False),
+        # Exact Yelp closed-card copy (includes "is").
+        ("Waitlist is closed", ObservationStatus.WAITLIST_CLOSED, None, None, None, False),
+        (
+            "Waitlist is closed. The restaurant is not taking waitlist parties right now.",
+            ObservationStatus.WAITLIST_CLOSED,
+            None,
+            None,
+            None,
+            False,
+        ),
         (
             "Waitlist unavailable",
             ObservationStatus.TEMPORARILY_UNAVAILABLE,
