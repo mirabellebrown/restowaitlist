@@ -67,14 +67,19 @@ def parse_wait_text(value: str) -> ParsedWait:
             content_hash=hashed,
             parser_name=PARSER_NAME,
         )
-    if re.search(r"\b(waitlist|restaurant)\s+(?:is\s+)?closed\b", lowered):
-        status = (
-            ObservationStatus.RESTAURANT_CLOSED
-            if "restaurant" in lowered
-            else ObservationStatus.WAITLIST_CLOSED
-        )
+    # Prefer waitlist-closed over restaurant-closed when both words appear
+    # (Yelp's closed card often says "Waitlist is closed" plus helper copy
+    # that mentions "the restaurant").
+    if re.search(r"\bwaitlist\s+(?:is\s+)?closed\b", lowered):
         return ParsedWait(
-            status=status,
+            status=ObservationStatus.WAITLIST_CLOSED,
+            raw_wait_text=raw,
+            content_hash=hashed,
+            parser_name=PARSER_NAME,
+        )
+    if re.search(r"\brestaurant\s+(?:is\s+)?closed\b", lowered):
+        return ParsedWait(
+            status=ObservationStatus.RESTAURANT_CLOSED,
             raw_wait_text=raw,
             content_hash=hashed,
             parser_name=PARSER_NAME,

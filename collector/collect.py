@@ -111,22 +111,49 @@ def bucket_15min_iso(now: datetime) -> str:
 
 
 def extract_wait_text(page) -> str:
-    """Read the visible wait value, resilient to Yelp's hashed class names."""
-    for selector in ("span[class*='waitstatus-waittime']", "[class*='waitstatus-waittime']"):
+    """Read the visible wait / waitlist status, resilient to Yelp's hashed classes.
+
+    When the waitlist is open, Yelp uses a `waitstatus-waittime` node
+    (e.g. "2–3 hours mins"). When it is closed, that node is absent and the
+    parent `waitstatus` node shows "Waitlist is closed" instead — we must
+    read that too, or we falsely record parse_error and skip publishing.
+    """
+    # Give the waitlist widget time to hydrate after navigation.
+    try:
+        page.locator("[class*='waitstatus']").first.wait_for(state="visible", timeout=15000)
+    except Exception:
+        pass
+
+    selectors = (
+        "span[class*='waitstatus-waittime']",
+        "[class*='waitstatus-waittime']",
+        "[class*='waitstatus']",
+    )
+    for selector in selectors:
         try:
             locator = page.locator(selector).first
-            if locator.count() > 0:
-                text = locator.inner_text(timeout=2000).strip()
-                if text:
-                    return text
+            locator.wait_for(state="visible", timeout=3000)
+            text = locator.inner_text(timeout=3000).strip()
+            if text:
+                return text
         except Exception:
-            pass
+            continue
+
     try:
         body = page.inner_text("body")
     except Exception:
         return ""
-    match = re.search(r"wait\s*time:?\s*([^\n]+)", body, re.IGNORECASE)
-    return match.group(1).strip() if match else ""
+    for pattern in (
+        r"waitlist\s+is\s+closed[^\n]*",
+        r"restaurant\s+is\s+closed[^\n]*",
+        r"wait\s*time:?\s*([^\n]+)",
+        r"(\d+\s*[–-]\s*\d+\s*hours?(?:\s*mins?)?)",
+        r"(\d+\s*[–-]\s*\d+\s*mins?)",
+    ):
+        match = re.search(pattern, body, re.IGNORECASE)
+        if match:
+            return (match.group(1) if match.lastindex else match.group(0)).strip()
+    return ""
 
 
 def looks_blocked(page, status_code) -> bool:
@@ -220,14 +247,28 @@ def collect() -> list[dict]:
 
                     text = extract_wait_text(page)
                     parsed = parse_wait_text(text)
+                    status = _status_str(parsed.status)
                     results.append(
                         _obs(
-                            size, observed_iso, _status_str(parsed.status),
+                            size, observed_iso, status,
                             parsed.wait_min_minutes, parsed.wait_max_minutes,
                             parsed.raw_wait_text, status_code, duration, parsed.error_message,
                         )
                     )
-                    print(f"[size {size}] {_status_str(parsed.status)} :: {text!r}")
+                    print(f"[size {size}] {status} :: {text!r}")
+                    # Closed / unavailable is the same for every party size — stop
+                    # extra Yelp hits and replicate the status across the rest.
+                    if status in ("waitlist_closed", "restaurant_closed") and index < len(PARTY_SIZES) - 1:
+                        for other in PARTY_SIZES[index + 1 :]:
+                            results.append(
+                                _obs(
+                                    other, observed_iso, status,
+                                    parsed.wait_min_minutes, parsed.wait_max_minutes,
+                                    parsed.raw_wait_text, status_code, duration, parsed.error_message,
+                                )
+                            )
+                            print(f"[size {other}] {status} :: {text!r} (same as party {size})")
+                        break
                 except Exception as exc:  # noqa: BLE001
                     duration = round((time.monotonic() - started) * 1000)
                     results.append(
