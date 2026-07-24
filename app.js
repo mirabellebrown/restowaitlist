@@ -27,7 +27,7 @@ const els = {
   confidence: document.querySelector("#confidence-label"),
   samples: document.querySelector("#sample-label"),
   historyCaption: document.querySelector("#history-caption"),
-  chart: document.querySelector("#history-chart"),
+  charts: document.querySelector("#history-charts"),
   dailyHistoryCaption: document.querySelector("#daily-history-caption"),
   dailyHistoryList: document.querySelector("#daily-history-list"),
   p50: document.querySelector("#p50"),
@@ -210,15 +210,38 @@ function flattenRows(data) {
   return observations;
 }
 
-function renderChart(observations, timeZone) {
-  const usable = observations
-    .filter((item) => CHART_STATUSES.has(item.status))
-    .slice(-24);
+function groupByLocalDay(observations, timeZone) {
+  const days = new Map();
+  for (const observation of observations) {
+    const local = localDayAndHour(observation.observedAt, timeZone);
+    let day = days.get(local.dateKey);
+    if (!day) {
+      day = {
+        dateKey: local.dateKey,
+        dateLabel: local.dateLabel,
+        observations: [],
+        hours: new Map(),
+      };
+      days.set(local.dateKey, day);
+    }
+    let hour = day.hours.get(local.hourKey);
+    if (!hour) {
+      hour = { label: local.hourLabel, observations: [] };
+      day.hours.set(local.hourKey, hour);
+    }
+    day.observations.push(observation);
+    hour.observations.push(observation);
+  }
+  return [...days.values()].sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+}
+
+function renderChartForDay(container, observations, timeZone, dateLabel) {
+  const usable = observations.filter((item) => CHART_STATUSES.has(item.status));
 
   if (usable.length < 1) {
-    els.chart.className = "empty-chart";
-    els.chart.innerHTML =
-      '<div class="empty-line"></div><p>Wait history will appear after the first reading.</p>';
+    container.className = "empty-chart";
+    container.innerHTML =
+      '<div class="empty-line"></div><p>No chartable readings were captured this day.</p>';
     return;
   }
 
@@ -244,9 +267,9 @@ function renderChart(observations, timeZone) {
         ? `<polyline class="chart-line" points="${points}"></polyline>`
         : "";
 
-  els.chart.className = "history-chart";
-  els.chart.innerHTML = `
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Recent wait history">
+  container.className = "history-chart";
+  container.innerHTML = `
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="${dateLabel} wait history">
       ${fill}
     </svg>
     <div class="chart-points-layer"></div>
@@ -256,7 +279,7 @@ function renderChart(observations, timeZone) {
     </div>
   `;
 
-  const layer = els.chart.querySelector(".chart-points-layer");
+  const layer = container.querySelector(".chart-points-layer");
   plotPoints.forEach(({ item, x, y, numeric }, index) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -281,32 +304,44 @@ function renderChart(observations, timeZone) {
   });
 }
 
-function renderDailyHistory(observations, timeZone) {
-  const days = new Map();
-  for (const observation of observations) {
-    const local = localDayAndHour(observation.observedAt, timeZone);
-    let day = days.get(local.dateKey);
-    if (!day) {
-      day = {
-        dateKey: local.dateKey,
-        dateLabel: local.dateLabel,
-        observations: 0,
-        hours: new Map(),
-      };
-      days.set(local.dateKey, day);
-    }
-    let hour = day.hours.get(local.hourKey);
-    if (!hour) {
-      hour = { label: local.hourLabel, observations: [] };
-      day.hours.set(local.hourKey, hour);
-    }
-    hour.observations.push(observation);
-    day.observations += 1;
+function renderChart(observations, timeZone) {
+  const days = groupByLocalDay(observations, timeZone);
+  els.charts.replaceChildren();
+  els.historyCaption.textContent = observations.length
+    ? `Party of ${state.partySize} · ${days.length} days · ${observations.length} captured readings`
+    : "No published readings yet";
+
+  if (!days.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-day-history";
+    empty.textContent = "Wait history will appear after the first published reading.";
+    els.charts.append(empty);
+    return;
   }
 
-  const orderedDays = [...days.values()].sort((a, b) =>
-    a.dateKey.localeCompare(b.dateKey),
-  );
+  const fragment = document.createDocumentFragment();
+  for (const day of days) {
+    const card = document.createElement("article");
+    card.className = "daily-chart-card";
+
+    const header = document.createElement("header");
+    header.className = "daily-chart-header";
+    const title = document.createElement("h3");
+    title.textContent = day.dateLabel;
+    const count = document.createElement("span");
+    count.textContent = `${day.observations.length} ${day.observations.length === 1 ? "reading" : "readings"}`;
+    header.append(title, count);
+
+    const chart = document.createElement("div");
+    renderChartForDay(chart, day.observations, timeZone, day.dateLabel);
+    card.append(header, chart);
+    fragment.append(card);
+  }
+  els.charts.append(fragment);
+}
+
+function renderDailyHistory(observations, timeZone) {
+  const orderedDays = groupByLocalDay(observations, timeZone);
   els.dailyHistoryList.replaceChildren();
   els.dailyHistoryCaption.textContent = observations.length
     ? `Party of ${state.partySize} · ${observations.length} readings across ${orderedDays.length} days`
@@ -330,7 +365,7 @@ function renderDailyHistory(observations, timeZone) {
     const title = document.createElement("h3");
     title.textContent = day.dateLabel;
     const count = document.createElement("span");
-    count.textContent = `${day.observations} ${day.observations === 1 ? "reading" : "readings"}`;
+    count.textContent = `${day.observations.length} ${day.observations.length === 1 ? "reading" : "readings"}`;
     header.append(title, count);
     card.append(header);
 
@@ -426,7 +461,6 @@ function render() {
   els.eyebrow.textContent = `NEW YORK · PARTY OF ${state.partySize}`;
   els.partyLabel.textContent = `${state.partySize} guests`;
   els.waitlistLink.href = `${WAITLIST_URL}${state.partySize}`;
-  els.historyCaption.textContent = `Party of ${state.partySize} · last 24 readings`;
 
   els.statusPill.textContent = latest
     ? STATUS_COPY[latest.status] || latest.status
