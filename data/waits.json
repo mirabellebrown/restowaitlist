@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "latest_observation_at_utc": "2026-07-24T01:30:00Z",
+  "latest_observation_at_utc": "2026-07-24T01:45:00Z",
   "restaurant": {
     "name": "Din Tai Fung New York",
     "timezone": "America/New_York",
@@ -4904,6 +4904,35 @@
     },
     {
       "scheduled_at_utc": "2026-07-24T01:30:00Z",
+      "waits": {
+        "2": {
+          "status": "waitlist_closed",
+          "wait_min_minutes": null,
+          "wait_max_minutes": null,
+          "raw_wait_text": "Waitlist is closed"
+        },
+        "3": {
+          "status": "waitlist_closed",
+          "wait_min_minutes": null,
+          "wait_max_minutes": null,
+          "raw_wait_text": "Waitlist is closed"
+        },
+        "4": {
+          "status": "waitlist_closed",
+          "wait_min_minutes": null,
+          "wait_max_minutes": null,
+          "raw_wait_text": "Waitlist is closed"
+        },
+        "5": {
+          "status": "waitlist_closed",
+          "wait_min_minutes": null,
+          "wait_max_minutes": null,
+          "raw_wait_text": "Waitlist is closed"
+        }
+      }
+    },
+    {
+      "scheduled_at_utc": "2026-07-24T01:45:00Z",
       "waits": {
         "2": {
           "status": "waitlist_closed",
