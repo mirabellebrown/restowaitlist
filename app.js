@@ -28,6 +28,8 @@ const els = {
   samples: document.querySelector("#sample-label"),
   historyCaption: document.querySelector("#history-caption"),
   chart: document.querySelector("#history-chart"),
+  dailyHistoryCaption: document.querySelector("#daily-history-caption"),
+  dailyHistoryList: document.querySelector("#daily-history-list"),
   p50: document.querySelector("#p50"),
   p80: document.querySelector("#p80"),
   recommendation: document.querySelector("#recommendation"),
@@ -49,6 +51,51 @@ function formatTime(value, timeZone) {
     minute: "2-digit",
     timeZone,
   }).format(new Date(value));
+}
+
+function formatReadingTime(value, timeZone) {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone,
+  }).format(new Date(value));
+}
+
+function formatParts(value, timeZone, options) {
+  return Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { ...options, timeZone })
+      .formatToParts(new Date(value))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+}
+
+function localDayAndHour(value, timeZone) {
+  const date = formatParts(value, timeZone, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const dateKeyParts = formatParts(value, timeZone, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const hour = formatParts(value, timeZone, {
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).hour;
+  return {
+    dateKey: `${dateKeyParts.year}-${dateKeyParts.month}-${dateKeyParts.day}`,
+    dateLabel: `${date.weekday}, ${date.month} ${date.day}, ${date.year}`,
+    hourKey: hour,
+    hourLabel: new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      timeZone,
+    }).format(new Date(value)),
+  };
 }
 
 function waitText(observation) {
@@ -234,6 +281,125 @@ function renderChart(observations, timeZone) {
   });
 }
 
+function renderDailyHistory(observations, timeZone) {
+  const days = new Map();
+  for (const observation of observations) {
+    const local = localDayAndHour(observation.observedAt, timeZone);
+    let day = days.get(local.dateKey);
+    if (!day) {
+      day = {
+        dateKey: local.dateKey,
+        dateLabel: local.dateLabel,
+        observations: 0,
+        hours: new Map(),
+      };
+      days.set(local.dateKey, day);
+    }
+    let hour = day.hours.get(local.hourKey);
+    if (!hour) {
+      hour = { label: local.hourLabel, observations: [] };
+      day.hours.set(local.hourKey, hour);
+    }
+    hour.observations.push(observation);
+    day.observations += 1;
+  }
+
+  const orderedDays = [...days.values()].sort((a, b) =>
+    a.dateKey.localeCompare(b.dateKey),
+  );
+  els.dailyHistoryList.replaceChildren();
+  els.dailyHistoryCaption.textContent = observations.length
+    ? `Party of ${state.partySize} · ${observations.length} readings across ${orderedDays.length} days`
+    : "Every captured reading, grouped by local hour";
+
+  if (!orderedDays.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-day-history";
+    empty.textContent = "Day by day history will appear after the first published reading.";
+    els.dailyHistoryList.append(empty);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  for (const day of orderedDays) {
+    const card = document.createElement("article");
+    card.className = "day-history-card";
+
+    const header = document.createElement("header");
+    header.className = "day-history-header";
+    const title = document.createElement("h3");
+    title.textContent = day.dateLabel;
+    const count = document.createElement("span");
+    count.textContent = `${day.observations} ${day.observations === 1 ? "reading" : "readings"}`;
+    header.append(title, count);
+    card.append(header);
+
+    const table = document.createElement("div");
+    table.className = "hour-history";
+    table.setAttribute("role", "table");
+    table.setAttribute("aria-label", `${day.dateLabel} wait readings`);
+
+    const tableHeader = document.createElement("div");
+    tableHeader.className = "hour-history-row hour-history-header";
+    tableHeader.setAttribute("role", "row");
+    for (const label of ["Hour", "Captured readings"]) {
+      const cell = document.createElement("span");
+      cell.textContent = label;
+      cell.setAttribute("role", "columnheader");
+      tableHeader.append(cell);
+    }
+    table.append(tableHeader);
+
+    for (const hour of [...day.hours.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      const row = document.createElement("div");
+      row.className = "hour-history-row";
+      row.setAttribute("role", "row");
+      const hourLabel = document.createElement("strong");
+      hourLabel.className = "hour-label";
+      hourLabel.textContent = hour[1].label;
+      hourLabel.setAttribute("role", "rowheader");
+      row.append(hourLabel);
+
+      const readings = document.createElement("div");
+      readings.className = "hour-readings";
+      for (const observation of hour[1].observations) {
+        const reading = document.createElement("div");
+        reading.className = `hour-reading reading-${observation.status}`;
+
+        const time = document.createElement("time");
+        time.dateTime = observation.observedAt;
+        time.textContent = formatReadingTime(observation.observedAt, timeZone);
+
+        const value = document.createElement("strong");
+        value.textContent = waitText(observation);
+
+        const status = document.createElement("span");
+        status.className = "reading-status";
+        status.textContent = STATUS_COPY[observation.status] || observation.status;
+
+        reading.append(time, value, status);
+        if (observation.rawWaitText) {
+          const raw = document.createElement("small");
+          raw.textContent = `Captured text: ${observation.rawWaitText}`;
+          reading.append(raw);
+        }
+        if (observation.errorMessage) {
+          const error = document.createElement("small");
+          error.className = "reading-error";
+          error.textContent = observation.errorMessage;
+          reading.append(error);
+        }
+        readings.append(reading);
+      }
+      row.append(readings);
+      table.append(row);
+    }
+    card.append(table);
+    fragment.append(card);
+  }
+  els.dailyHistoryList.append(fragment);
+}
+
 function renderPartyPicker() {
   const label = els.partyPicker.querySelector("span");
   els.partyPicker.replaceChildren(label);
@@ -290,6 +456,7 @@ function render() {
 
   renderPartyPicker();
   renderChart(observations, state.timezone);
+  renderDailyHistory(observations, state.timezone);
 }
 
 async function loadData() {
