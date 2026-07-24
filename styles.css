@@ -204,6 +204,33 @@ a { color: inherit; }
 .insight-grid strong { display: block; margin-top: 22px; font-family: Georgia, serif; font-size: 38px; font-weight: 500; color: var(--red); }
 .recommendation-card p:last-child { max-width: 570px; margin: 22px 0 0; font-family: Georgia, serif; font-size: 24px; line-height: 1.3; }
 
+.daily-history { max-width: 1240px; margin: 0 auto; padding: 0 30px 110px; }
+.daily-history .section-heading { margin-bottom: 30px; }
+.daily-history-list { display: grid; gap: 18px; }
+.empty-day-history { margin: 0; padding: 34px; border: 1px solid var(--line); color: #847b72; text-align: center; }
+.day-history-card { border: 1px solid var(--ink); background: var(--cream); }
+.day-history-header { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 22px 24px; border-bottom: 1px solid var(--ink); }
+.day-history-header h3 { margin: 0; font-family: Georgia, serif; font-size: 28px; font-weight: 500; letter-spacing: -.04em; }
+.day-history-header span { color: #776f67; font-size: 12px; }
+.hour-history { display: grid; }
+.hour-history-row { display: grid; grid-template-columns: 145px 1fr; gap: 24px; padding: 18px 24px; border-bottom: 1px solid var(--line); }
+.hour-history-row:last-child { border-bottom: 0; }
+.hour-history-header { padding-top: 12px; padding-bottom: 12px; color: #8d847a; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+.hour-label { padding-top: 4px; font-size: 13px; }
+.hour-readings { display: grid; gap: 10px; }
+.hour-reading { display: grid; grid-template-columns: 88px minmax(88px, auto) max-content; align-items: baseline; gap: 10px 16px; padding: 10px 12px; border-left: 3px solid var(--red); background: rgba(201,44,33,.06); }
+.hour-reading time { color: #776f67; font-size: 11px; font-variant-numeric: tabular-nums; }
+.hour-reading > strong { color: var(--red); font-family: Georgia, serif; font-size: 20px; font-weight: 500; }
+.reading-status { color: #6f675f; font-size: 10px; }
+.hour-reading small { grid-column: 2 / -1; color: #847b72; font-size: 10px; line-height: 1.4; }
+.hour-reading .reading-error { color: var(--red-dark); }
+.hour-reading.reading-waitlist_closed,
+.hour-reading.reading-restaurant_closed,
+.hour-reading.reading-temporarily_unavailable { border-left-color: #8b5b00; background: rgba(139,91,0,.07); }
+.hour-reading.reading-waitlist_closed > strong,
+.hour-reading.reading-restaurant_closed > strong,
+.hour-reading.reading-temporarily_unavailable > strong { color: #8b5b00; }
+
 footer { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 30px; align-items: center; padding: 32px max(30px, calc((100vw - 1180px) / 2)); background: var(--ink); color: var(--cream); }
 footer strong { letter-spacing: -.04em; }
 footer strong span { color: #f05443; }
@@ -244,6 +271,7 @@ footer a { font-size: 12px; font-weight: 750; text-decoration: none; }
   .signal-strip > div { border-right: 0; border-bottom: 1px solid var(--line); }
   .insight-grid { grid-template-columns: 1fr 1fr; }
   .recommendation-card { grid-column: 1 / 3; border-top: 1px solid var(--line); }
+  .hour-history-row { grid-template-columns: 105px 1fr; gap: 16px; }
   footer { grid-template-columns: 1fr; }
   .manage-grid { grid-template-columns: 1fr; gap: 55px; }
 }
@@ -270,6 +298,14 @@ footer a { font-size: 12px; font-weight: 750; text-decoration: none; }
   .recommendation-card { grid-column: auto; }
   .insight-grid article,
   .insight-grid article:first-child { padding: 24px 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .daily-history { padding: 0 18px 70px; }
+  .day-history-header { align-items: flex-start; padding: 18px; }
+  .day-history-header h3 { font-size: 24px; }
+  .hour-history-row { grid-template-columns: 1fr; gap: 10px; padding: 15px 18px; }
+  .hour-history-header { display: none; }
+  .hour-label { padding-top: 0; }
+  .hour-reading { grid-template-columns: 78px minmax(80px, auto) 1fr; gap: 7px 10px; padding: 9px 10px; }
+  .hour-reading small { grid-column: 1 / -1; }
   .manage-nav { align-items: flex-start; padding: 22px 18px; }
   .manage-nav > div { display: grid; justify-items: end; gap: 5px; text-align: right; }
   .manage-header { padding: 58px 18px 38px; }
