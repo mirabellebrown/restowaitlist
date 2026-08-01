@@ -36,6 +36,7 @@ class SourceConfig:
     selector: str = DEFAULT_SELECTOR
     attribute: str | None = None
     manual_csv_path: str = "./data/manual-waits.csv"
+    manual_snapshot_path: str = "./data/inbox/latest-waits.json"
     timeout_seconds: float = 20.0
     transient_retry_delay_seconds: float = 1.0
     user_agent: str = DEFAULT_USER_AGENT
@@ -43,7 +44,7 @@ class SourceConfig:
 
 @dataclass(slots=True)
 class CollectionConfig:
-    party_sizes: list[int] = field(default_factory=lambda: [2])
+    party_sizes: list[int] = field(default_factory=lambda: [2, 3, 4, 5, 6])
     duration_days: float = 5.0
     interval_minutes: int = 15
 
@@ -80,6 +81,11 @@ class AppConfig:
     @property
     def manual_csv_path(self) -> Path:
         raw = Path(self.source.manual_csv_path)
+        return raw if raw.is_absolute() else (self.config_path.parent / raw).resolve()
+
+    @property
+    def manual_snapshot_path(self) -> Path:
+        raw = Path(self.source.manual_snapshot_path)
         return raw if raw.is_absolute() else (self.config_path.parent / raw).resolve()
 
     def is_open(self, local_dt: datetime) -> bool:
@@ -140,6 +146,9 @@ def load_config(path: str | Path = "config.toml") -> AppConfig:
                 selector=str(source.get("selector", DEFAULT_SELECTOR)),
                 attribute=source.get("attribute") or None,
                 manual_csv_path=str(source.get("manual_csv_path", "./data/manual-waits.csv")),
+                manual_snapshot_path=str(
+                    source.get("manual_snapshot_path", "./data/inbox/latest-waits.json")
+                ),
                 timeout_seconds=float(source.get("timeout_seconds", 20.0)),
                 transient_retry_delay_seconds=float(
                     source.get("transient_retry_delay_seconds", 1.0)
@@ -147,7 +156,9 @@ def load_config(path: str | Path = "config.toml") -> AppConfig:
                 user_agent=str(source.get("user_agent", DEFAULT_USER_AGENT)),
             ),
             collection=CollectionConfig(
-                party_sizes=[int(value) for value in collection.get("party_sizes", [2])],
+                party_sizes=[
+                    int(value) for value in collection.get("party_sizes", [2, 3, 4, 5, 6])
+                ],
                 duration_days=float(collection.get("duration_days", 5.0)),
                 interval_minutes=int(collection.get("interval_minutes", 15)),
             ),
@@ -187,10 +198,14 @@ def validate_config(config: AppConfig) -> None:
             )
     if not config.collection.party_sizes or any(size < 1 for size in config.collection.party_sizes):
         errors.append("collection.party_sizes must contain positive integers")
+    if len(set(config.collection.party_sizes)) != len(config.collection.party_sizes):
+        errors.append("collection.party_sizes must not contain duplicates")
     if config.collection.duration_days <= 0:
         errors.append("collection.duration_days must be positive")
     if config.collection.interval_minutes <= 0:
         errors.append("collection.interval_minutes must be positive")
+    elif 60 % config.collection.interval_minutes:
+        errors.append("collection.interval_minutes must divide evenly into 60 minutes")
     risk = config.recommendation.default_risk_percentile
     if not 0.5 <= risk <= 0.99:
         errors.append("recommendation.default_risk_percentile must be between 0.50 and 0.99")
