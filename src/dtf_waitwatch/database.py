@@ -131,6 +131,20 @@ class Database:
                 is not None
             )
 
+    def observation_exists_in_slot(
+        self, location_id: int, party_size: int, scheduled_at: datetime
+    ) -> bool:
+        """Return whether any run already filled this public table cell."""
+        with self.connect() as connection:
+            return (
+                connection.execute(
+                    """SELECT 1 FROM observations WHERE location_id=? AND party_size=?
+                       AND scheduled_at_utc=?""",
+                    (location_id, party_size, utc_iso(scheduled_at)),
+                ).fetchone()
+                is not None
+            )
+
     def insert_observation(
         self,
         *,
